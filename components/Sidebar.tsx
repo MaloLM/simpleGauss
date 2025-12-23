@@ -48,14 +48,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside 
       className={`h-screen overflow-y-auto border-l flex flex-col transition-all duration-500 ease-in-out shrink-0 relative ${
-        isOpen ? 'w-80 p-6 opacity-100' : 'w-0 p-0 opacity-0 overflow-hidden border-none'
+        isOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'
       } ${
         isDark 
           ? 'bg-slate-950 border-slate-800 text-slate-100 shadow-2xl shadow-black/50' 
           : 'bg-white border-slate-200 text-slate-900 shadow-2xl shadow-slate-200'
       }`}
     >
-      <div className={`transition-opacity duration-300 ${isOpen ? 'opacity-100 delay-200' : 'opacity-0 pointer-events-none'}`}>
+      {/* 
+          Inner container with fixed width (w-80 = 320px) to prevent 
+          content from squishing/reflowing during the width transition.
+      */}
+      <div className={`w-80 p-6 transition-opacity duration-300 ${isOpen ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
@@ -126,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     type="text"
                     value={curve.name}
                     onChange={(e) => onUpdateCurve(curve.id, { name: e.target.value })}
-                    className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0"
+                    className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0 outline-none"
                   />
                   <div className="flex gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
                     <button 

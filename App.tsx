@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar';
 import ExportModal from './components/ExportModal';
 import SettingsModal from './components/SettingsModal';
 import { translations } from './translations';
-import { PanelLeftOpenIcon, RefreshCcwIcon } from 'lucide-react';
+import { PanelLeftOpenIcon, PanelLeftCloseIcon, RefreshCcwIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [curves, setCurves] = useState<GaussianCurve[]>(INITIAL_CURVES);
@@ -69,8 +69,7 @@ const App: React.FC = () => {
 
     const capture = async () => {
       // ENSURE we target the unique canvas SVG ID to avoid capturing UI icons
-      // Fix: Convert HTMLElement to unknown first to safely cast to SVGElement
-      const svgElement = (document.getElementById('main-canvas-svg') as unknown) as SVGElement | null;
+      const svgElement = document.getElementById('main-canvas-svg') as unknown as SVGElement | null;
       if (!svgElement) {
         setIsExporting(false);
         return;
@@ -107,11 +106,12 @@ const App: React.FC = () => {
           if (activeExportSettings.showTitle) {
             let baseFontSize = 80 * scale;
             const maxTitleWidth = canvas.width * 0.85;
-            ctx.font = `900 ${baseFontSize}px Inter, sans-serif`;
+            // Slightly less bold title font weight (800 instead of 900)
+            ctx.font = `800 ${baseFontSize}px Inter, sans-serif`;
             let textWidth = ctx.measureText(activeExportSettings.title).width;
             while (textWidth > maxTitleWidth && baseFontSize > 20 * scale) {
               baseFontSize -= 2 * scale;
-              ctx.font = `900 ${baseFontSize}px Inter, sans-serif`;
+              ctx.font = `800 ${baseFontSize}px Inter, sans-serif`;
               textWidth = ctx.measureText(activeExportSettings.title).width;
             }
             ctx.fillStyle = primaryTextColor;
@@ -143,7 +143,7 @@ const App: React.FC = () => {
               ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
               ctx.lineTo(bx + radius, by + bh);
               ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - radius);
-              ctx.lineTo(bx + radius, by + radius);
+              ctx.lineTo(bx, by + radius);
               ctx.quadraticCurveTo(bx, by, bx + radius, by);
               ctx.closePath();
               ctx.fill();
@@ -194,14 +194,8 @@ const App: React.FC = () => {
   const theme = appSettings.theme;
 
   return (
-    <div 
-      className={`fixed inset-0 grid grid-cols-[minmax(0,1fr)_auto] transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}
-      style={{ 
-        gridTemplateColumns: `minmax(0, 1fr) ${isSidebarOpen ? '320px' : '0px'}`,
-        transition: 'grid-template-columns 500ms cubic-bezier(0.4, 0, 0.2, 1)'
-      }}
-    >
-      <main className="relative flex flex-col overflow-hidden h-full">
+    <div className={`fixed inset-0 flex transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <main className="relative flex-1 flex flex-col overflow-hidden h-full">
         {/* Header Overlay */}
         <header className="absolute top-0 left-0 w-full p-8 md:p-12 z-10 pointer-events-none flex justify-between items-start">
           <div className="flex flex-col gap-1 pointer-events-auto max-w-lg">
@@ -209,12 +203,13 @@ const App: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={`text-3xl md:text-4xl font-black bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
+              // Slightly less bold title weight: font-extrabold instead of font-black
+              className={`text-3xl md:text-4xl font-extrabold bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
             />
             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em]">{t.appSubtitle}</p>
           </div>
           
-          <div className="flex gap-3 pointer-events-auto">
+          <div className="flex gap-3 pointer-events-auto items-center">
             <button 
               onClick={resetView}
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
@@ -227,14 +222,11 @@ const App: React.FC = () => {
             </button>
             
             <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${
-                isSidebarOpen ? 'opacity-0 pointer-events-none translate-x-12' : 'opacity-100 translate-x-0'
-              } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
-              title={t.open}
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
+              title={isSidebarOpen ? t.collapse : t.open}
             >
-              {/* Fix: use size={20} instead of size(20) */}
-              <PanelLeftOpenIcon size={20} />
+              {isSidebarOpen ? <PanelLeftCloseIcon size={20} /> : <PanelLeftOpenIcon size={20} />}
             </button>
           </div>
         </header>
@@ -300,9 +292,9 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Legend Overlay - Positioned within frame bounds */}
+        {/* Legend Overlay - Positioned within frame bounds with adjusted spacing */}
         {!isExporting && (
-          <div className="absolute bottom-20 md:bottom-24 left-4 md:left-10 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
+          <div className="absolute bottom-24 md:bottom-28 left-8 md:left-14 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
             {curves.filter(c => c.isVisible).map(c => (
               <div key={c.id} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
                 <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]" style={{ backgroundColor: c.color }} />
