@@ -1,4 +1,6 @@
 
+export type Language = 'en' | 'fr';
+
 export interface GaussianCurve {
   id: string;
   name: string;
@@ -36,4 +38,5 @@ export interface AppSettings {
   theme: Theme;
   handleSize: number;
   curveOpacity: number;
+  language: Language;
 }

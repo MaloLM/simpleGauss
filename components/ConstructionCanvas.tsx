@@ -1,7 +1,8 @@
 
 import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { GaussianCurve, ViewBox, DragState, Theme } from '../types';
+import { GaussianCurve, ViewBox, DragState, Theme, Language } from '../types';
 import { generateGaussianPath, calculateGaussian } from '../services/mathUtils';
+import { translations } from '../translations';
 import Handle from './Handle';
 
 interface ConstructionCanvasProps {
@@ -15,6 +16,7 @@ interface ConstructionCanvasProps {
   onPan: (offset: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
   handleSize?: number;
   curveOpacity?: number;
+  language: Language;
 }
 
 const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({ 
@@ -27,8 +29,10 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   panOffset,
   onPan,
   handleSize = 0.1,
-  curveOpacity = 0.12
+  curveOpacity = 0.12,
+  language
 }) => {
+  const t = translations[language];
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -236,7 +240,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                         cursor="move"
                         color={curve.color}
                         isActive={drag?.curveId === curve.id && drag?.type === 'mean-amplitude'}
-                        tooltip={`${curve.name} Peak`}
+                        tooltip={`${curve.name} ${t.peak}`}
                         size={handleSize}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'mean-amplitude' }); }}
                       />

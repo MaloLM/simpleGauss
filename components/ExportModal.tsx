@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { GaussianCurve, Theme, ExportSettings } from '../types';
+import { GaussianCurve, Theme, ExportSettings, Language } from '../types';
+import { translations } from '../translations';
 import { XIcon, CheckCircle2Icon, CircleIcon } from 'lucide-react';
 
 interface ExportModalProps {
@@ -10,9 +11,12 @@ interface ExportModalProps {
   curves: GaussianCurve[];
   theme: Theme;
   currentTitle: string;
+  language: Language;
 }
 
-const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, curves, theme, currentTitle }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, curves, theme, currentTitle, language }) => {
+  const t = translations[language];
+  
   const [settings, setSettings] = useState<ExportSettings>({
     showTitle: true,
     title: currentTitle,
@@ -21,7 +25,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
     selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
   });
 
-  // Reset settings to match current app state whenever the modal is opened
   useEffect(() => {
     if (isOpen) {
       setSettings({
@@ -58,7 +61,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
       {/* Modal Content */}
       <div className={`relative w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 ${isDark ? 'bg-slate-900 border border-white/10 text-white' : 'bg-white border border-slate-200 text-slate-900'}`}>
         <div className="flex items-center justify-between p-6 border-b border-white/5">
-          <h2 className="text-xl font-black uppercase tracking-tight">Export Visualization</h2>
+          <h2 className="text-xl font-black uppercase tracking-tight">{t.exportTitle}</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
             <XIcon size={20} />
           </button>
@@ -68,12 +71,12 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
           {/* Title Section */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-black uppercase tracking-widest text-blue-500">Document Title</label>
+              <label className="text-xs font-black uppercase tracking-widest text-blue-500">{t.docTitle}</label>
               <button 
                 onClick={() => setSettings(s => ({ ...s, showTitle: !s.showTitle }))}
                 className={`text-[10px] font-bold px-2 py-1 rounded ${settings.showTitle ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
               >
-                {settings.showTitle ? 'VISIBLE' : 'HIDDEN'}
+                {settings.showTitle ? t.visible : t.hidden}
               </button>
             </div>
             <input
@@ -82,7 +85,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
               value={settings.title}
               onChange={(e) => setSettings(s => ({ ...s, title: e.target.value }))}
               className={`w-full text-2xl font-black bg-transparent border-b-2 outline-none py-2 transition-opacity ${!settings.showTitle ? 'opacity-30' : 'opacity-100'} ${isDark ? 'border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-500'}`}
-              placeholder="Enter title..."
+              placeholder="..."
             />
           </section>
 
@@ -92,21 +95,21 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
               onClick={() => setSettings(s => ({ ...s, showLegend: !s.showLegend }))}
               className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${settings.showLegend ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
             >
-              <span className="text-sm font-bold uppercase tracking-wider">Include Legend</span>
+              <span className="text-sm font-bold uppercase tracking-wider">{t.includeLegend}</span>
               {settings.showLegend ? <CheckCircle2Icon size={18} /> : <CircleIcon size={18} />}
             </button>
             <button 
               onClick={() => setSettings(s => ({ ...s, showScales: !s.showScales }))}
               className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${settings.showScales ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
             >
-              <span className="text-sm font-bold uppercase tracking-wider">Show Scales</span>
+              <span className="text-sm font-bold uppercase tracking-wider">{t.showScales}</span>
               {settings.showScales ? <CheckCircle2Icon size={18} /> : <CircleIcon size={18} />}
             </button>
           </section>
 
           {/* Curve Selection */}
           <section className="space-y-4">
-            <label className="text-xs font-black uppercase tracking-widest text-blue-500">Individual Curves</label>
+            <label className="text-xs font-black uppercase tracking-widest text-blue-500">{t.individualCurves}</label>
             <div className="grid grid-cols-2 gap-2">
               {curves.map(curve => (
                 <button
@@ -128,14 +131,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
             onClick={onClose}
             className="flex-1 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-white/5 transition-colors"
           >
-            Cancel
+            {t.cancel}
           </button>
           <button 
             onClick={() => onConfirm(settings)}
             disabled={settings.selectedCurveIds.length === 0}
             className="flex-[2] py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-blue-600 text-white shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
           >
-            Download High-Res Image
+            {t.download}
           </button>
         </div>
       </div>

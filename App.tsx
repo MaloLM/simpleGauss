@@ -6,6 +6,7 @@ import ConstructionCanvas from './components/ConstructionCanvas';
 import Sidebar from './components/Sidebar';
 import ExportModal from './components/ExportModal';
 import SettingsModal from './components/SettingsModal';
+import { translations } from './translations';
 import { PanelLeftOpenIcon, RefreshCcwIcon } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -22,7 +23,10 @@ const App: React.FC = () => {
     theme: 'dark',
     handleSize: 0.1,
     curveOpacity: 0.12,
+    language: 'en'
   });
+
+  const t = translations[appSettings.language];
 
   const updateAppSettings = useCallback((updates: Partial<AppSettings>) => {
     setAppSettings(prev => ({ ...prev, ...updates }));
@@ -33,7 +37,7 @@ const App: React.FC = () => {
     const newId = Math.random().toString(36).substr(2, 9);
     const newCurve: GaussianCurve = {
       id: newId,
-      name: `Curve ${curves.length + 1}`,
+      name: appSettings.language === 'en' ? `Curve ${curves.length + 1}` : `Courbe ${curves.length + 1}`,
       mean: (Math.random() - 0.5) * 6 + panOffset.x,
       sigma: 0.8 + Math.random() * 0.4,
       amplitude: 0.6 + Math.random() * 0.4,
@@ -42,7 +46,7 @@ const App: React.FC = () => {
       isLocked: false,
     };
     setCurves(prev => [...prev, newCurve]);
-  }, [curves.length, panOffset.x]);
+  }, [curves.length, panOffset.x, appSettings.language]);
 
   const deleteCurve = useCallback((id: string) => {
     setCurves(prev => prev.filter(c => c.id !== id));
@@ -191,7 +195,7 @@ const App: React.FC = () => {
               onChange={(e) => setTitle(e.target.value)}
               className={`text-3xl md:text-4xl font-black bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
             />
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em]">Gaussian Distribution Engine</p>
+            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em]">{t.appSubtitle}</p>
           </div>
           
           <div className="flex gap-3 pointer-events-auto">
@@ -200,10 +204,10 @@ const App: React.FC = () => {
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
                 panOffset.x === 0 && panOffset.y === 0 ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
               } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
-              title="Reset View"
+              title={t.reset}
             >
               <RefreshCcwIcon size={18} />
-              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Reset</span>
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{t.reset}</span>
             </button>
             
             <button 
@@ -211,7 +215,7 @@ const App: React.FC = () => {
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${
                 isSidebarOpen ? 'opacity-0 pointer-events-none translate-x-12' : 'opacity-100 translate-x-0'
               } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
-              title="Open Sidebar"
+              title={t.open}
             >
               <PanelLeftOpenIcon size={20} />
             </button>
@@ -230,6 +234,7 @@ const App: React.FC = () => {
           onPan={setPanOffset}
           handleSize={appSettings.handleSize}
           curveOpacity={appSettings.curveOpacity}
+          language={appSettings.language}
         />
 
         {/* Legend Overlay (UI Only) */}
@@ -258,6 +263,7 @@ const App: React.FC = () => {
         onUpdateCurve={updateCurve}
         onSettingsToggle={() => setIsSettingsModalOpen(true)}
         onExport={() => setIsExportModalOpen(true)}
+        language={appSettings.language}
       />
 
       <ExportModal
@@ -267,6 +273,7 @@ const App: React.FC = () => {
         curves={curves}
         theme={theme}
         currentTitle={title}
+        language={appSettings.language}
       />
 
       <SettingsModal 

@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { GaussianCurve, Theme } from '../types';
+import { GaussianCurve, Theme, Language } from '../types';
 import { COLORS } from '../constants';
+import { translations } from '../translations';
 import { 
   PlusIcon, 
   Trash2Icon, 
@@ -25,6 +26,7 @@ interface SidebarProps {
   onUpdateCurve: (id: string, updates: Partial<GaussianCurve>) => void;
   onSettingsToggle: () => void;
   onExport: () => void;
+  language: Language;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -36,8 +38,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   onDeleteCurve, 
   onUpdateCurve,
   onSettingsToggle,
-  onExport
+  onExport,
+  language
 }) => {
+  const t = translations[language];
   const isDark = theme === 'dark';
   const isLimitReached = curves.length >= 15;
 
@@ -57,25 +61,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           <button 
             onClick={onClose}
             className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}
-            title="Collapse Sidebar"
+            title={t.collapse}
           >
             <PanelLeftCloseIcon size={18} />
           </button>
-          <h2 className="text-xl font-bold tracking-tight">Inspector</h2>
+          <h2 className="text-xl font-bold tracking-tight">{t.inspector}</h2>
         </div>
         
         <div className="flex gap-1">
           <button 
             onClick={onSettingsToggle}
             className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-blue-400' : 'hover:bg-slate-100 text-slate-600'}`}
-            title="Settings"
+            title={t.settingsIcon}
           >
             <SettingsIcon size={18} />
           </button>
           <button 
             onClick={onExport}
             className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}
-            title="Export Image"
+            title={t.exportIcon}
           >
             <DownloadIcon size={18} />
           </button>
@@ -87,9 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Section Header with Integrated Add Button */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Construction Set</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">{t.constructionSet}</h3>
             <span className={`text-[10px] opacity-40 font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {curves.length} / 15 active
+              {t.activeCount(curves.length)}
             </span>
           </div>
           <button
@@ -100,17 +104,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                 ? 'bg-slate-700 cursor-not-allowed opacity-50 shadow-none' 
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
             }`}
-            title={isLimitReached ? "Limit reached (max 15)" : "Add New Curve"}
+            title={isLimitReached ? t.limitReached : t.new}
           >
             <PlusIcon size={12} strokeWidth={4} />
-            <span>New</span>
+            <span>{t.new}</span>
           </button>
         </div>
 
         {isLimitReached && (
           <div className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
             <InfoIcon size={14} className="shrink-0" />
-            <p className="text-[10px] font-bold uppercase tracking-tight leading-tight">Max limit of 15 curves reached. Remove one to add more.</p>
+            <p className="text-[10px] font-bold uppercase tracking-tight leading-tight">{t.limitReached}</p>
           </div>
         )}
 
@@ -146,7 +150,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">Mean (μ)</label>
+                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.mean} (μ)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -156,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">Std Dev (σ)</label>
+                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.stdDev} (σ)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -170,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 space-y-1">
-                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">Peak (Amp)</label>
+                  <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.peak} (Amp)</label>
                   <div className="flex items-center gap-2">
                      <input
                       type="range"
@@ -204,12 +208,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           
           {curves.length === 0 && (
             <div className={`text-center py-12 rounded-3xl border-2 border-dashed ${isDark ? 'border-slate-800 text-slate-600' : 'border-slate-100 text-slate-400'}`}>
-              <p className="text-sm italic mb-4">No active curves.</p>
+              <p className="text-sm italic mb-4">{t.noCurves}</p>
               <button
                 onClick={onAddCurve}
                 className="text-xs font-black uppercase text-blue-500 hover:text-blue-400 underline underline-offset-4"
               >
-                Create your first curve
+                {t.createFirst}
               </button>
             </div>
           )}
@@ -219,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer / Tip */}
       <div className={`mt-8 pt-8 border-t min-w-0 ${isDark ? 'border-slate-800/50' : 'border-slate-100'}`}>
         <p className="text-[10px] text-slate-500 text-center px-4 leading-relaxed font-medium">
-          <span className="text-blue-500 font-bold">PRO TIP:</span> Drag the <span className="text-blue-400">top handle</span> for mean/amplitude and the <span className="text-blue-400">side handle</span> for standard deviation.
+          <span className="text-blue-500 font-bold">{t.proTip.split(':')[0]}:</span> {t.proTip.split(':')[1]}
         </p>
       </div>
     </aside>
