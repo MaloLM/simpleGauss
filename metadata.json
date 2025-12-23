@@ -1,0 +1,5 @@
+{
+  "name": "Gaussian Construction Tool",
+  "description": "An interactive, dynamic normal distribution builder. Manipulate Gaussian curves directly through intuitive handles to adjust mean, standard deviation, and amplitude.",
+  "requestFramePermissions": []
+}
