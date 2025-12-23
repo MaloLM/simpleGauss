@@ -1,5 +1,5 @@
 
-import React, { useRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { GaussianCurve, ViewBox, DragState, Theme, Language } from '../types';
 import { generateGaussianPath, calculateGaussian } from '../services/mathUtils';
 import { translations } from '../translations';
@@ -14,6 +14,8 @@ interface ConstructionCanvasProps {
   onUpdateCurve: (id: string, updates: Partial<GaussianCurve>) => void;
   panOffset: { x: number; y: number };
   onPan: (offset: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
+  zoom: number;
+  onZoom: (zoom: number | ((prev: number) => number)) => void;
   handleSize?: number;
   curveOpacity?: number;
   language: Language;
@@ -32,6 +34,8 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   onUpdateCurve,
   panOffset,
   onPan,
+  zoom,
+  onZoom,
   handleSize = 0.1,
   curveOpacity = 0.12,
   language,
@@ -62,7 +66,9 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const mathWidth = 14;
+  // Standard math width is 14. Adjust by zoom.
+  const baseMathWidth = 14;
+  const mathWidth = baseMathWidth / zoom;
   const aspect = dimensions.width / dimensions.height;
   const mathHeight = mathWidth / aspect;
 
@@ -88,13 +94,31 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
 
   const showLabels = !isExporting || showScalesInExport;
 
+  const onWheel = useCallback((e: React.WheelEvent) => {
+    // Zoom centered on viewport
+    e.preventDefault();
+    const direction = e.deltaY > 0 ? -1 : 1;
+    onZoom(prev => {
+      const next = direction > 0 ? prev * 1.05 : prev / 1.05;
+      return Math.min(Math.max(next, 0.1), 50);
+    });
+  }, [onZoom]);
+
   const gridLines = useMemo(() => {
     if (!showGrid) return null;
     const lines = [];
-    const stepX = 1;
-    const stepY = 0.2;
+    
+    // Adaptive grid density
+    let stepX = 1;
+    if (zoom > 5) stepX = 0.2;
+    if (zoom > 15) stepX = 0.1;
+    if (zoom < 0.5) stepX = 5;
 
-    for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x += stepX) {
+    let stepY = 0.2;
+    if (zoom > 5) stepY = 0.05;
+    if (zoom < 0.5) stepY = 1;
+
+    for (let x = Math.floor(xMin / stepX) * stepX; x <= Math.ceil(xMax / stepX) * stepX; x += stepX) {
       lines.push(
         <line 
           key={`grid-x-${x}`} 
@@ -117,28 +141,33 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
       );
     }
     return lines;
-  }, [xMin, xMax, yMin, yMax, colors.grid, showGrid]);
+  }, [xMin, xMax, yMin, yMax, colors.grid, showGrid, zoom]);
 
   const labels = useMemo(() => {
     if (!showLabels) return null;
     const texts = [];
     
-    // Sticky logic: Clamp labels to screen edges if origin is panned away
-    const xLabelY = Math.max(yMin + 0.3, Math.min(yMax - 0.5, 0)) - 0.2;
-    const yLabelX = Math.max(xMin + 0.1, Math.min(xMax - 0.8, 0)) - 0.3;
+    const xLabelY = Math.max(yMin + (0.3 / zoom), Math.min(yMax - (0.5 / zoom), 0)) - (0.2 / zoom);
+    const yLabelX = Math.max(xMin + (0.1 / zoom), Math.min(xMax - (0.8 / zoom), 0)) - (0.3 / zoom);
+
+    const fontSize = 0.18 / zoom;
 
     if (showXValues) {
-      for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x += 1) {
-        if (x === 0) continue;
+      let stepX = 1;
+      if (zoom > 5) stepX = 0.5;
+      if (zoom < 0.5) stepX = 5;
+
+      for (let x = Math.floor(xMin / stepX) * stepX; x <= Math.ceil(xMax / stepX) * stepX; x += stepX) {
+        if (Math.abs(x) < 0.0001) continue;
         texts.push(
           <g key={`label-x-${x}`} transform={`translate(${x}, ${xLabelY}) scale(1, -1)`}>
             <text 
-              fontSize="0.18" 
+              fontSize={fontSize} 
               textAnchor="middle" 
               fill={colors.text}
               className="font-bold select-none pointer-events-none"
             >
-              {x}
+              {parseFloat(x.toFixed(1))}
             </text>
           </g>
         );
@@ -146,19 +175,22 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
     }
 
     if (showYValues) {
-      const stepY = 1; 
+      let stepY = 1; 
+      if (zoom > 5) stepY = 0.2;
+      if (zoom < 0.5) stepY = 5;
+
       for (let y = Math.floor(yMin / stepY) * stepY; y <= Math.ceil(yMax / stepY) * stepY; y += stepY) {
         if (Math.abs(y) < 0.001) continue;
         texts.push(
           <g key={`label-y-${y}`} transform={`translate(${yLabelX}, ${y}) scale(1, -1)`}>
             <text 
-              fontSize="0.16" 
+              fontSize={fontSize * 0.9} 
               textAnchor="end" 
               alignmentBaseline="middle"
               fill={colors.text}
               className="font-bold select-none pointer-events-none"
             >
-              {Math.round(y)}
+              {parseFloat(y.toFixed(1))}
             </text>
           </g>
         );
@@ -166,7 +198,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
     }
 
     return texts;
-  }, [xMin, xMax, yMin, yMax, colors.text, showLabels, showXValues, showYValues]);
+  }, [xMin, xMax, yMin, yMax, colors.text, showLabels, showXValues, showYValues, zoom]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -218,7 +250,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   }, [drag, isPanning, curves, mathWidth, mathHeight, xMin, yMin, onUpdateCurve, onPan]);
 
   const handleBgMouseDown = (e: React.MouseEvent) => {
-    if (e.target === svgRef.current || (e.target as any).tagName === 'line') {
+    if (e.target === svgRef.current || (e.target as any).tagName === 'line' || (e.target as any).tagName === 'rect') {
       setIsPanning(true);
     }
   };
@@ -227,6 +259,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
     <div 
       ref={containerRef} 
       className={`w-full h-full flex items-center justify-center p-4 md:p-10 pb-16 md:pb-24 transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}
+      onWheel={onWheel}
     >
       <div 
         className={`relative w-full h-full shadow-2xl rounded-3xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -244,7 +277,9 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
             {gridLines}
             {showAxes && (
               <>
+                {/* Horizontal Axis */}
                 <line x1={xMin} y1={0} x2={xMax} y2={0} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+                {/* Vertical Axis - FIXED: extended y2 to yMax instead of 0 */}
                 <line x1={0} y1={yMin} x2={0} y2={yMax} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
               </>
             )}
@@ -277,11 +312,10 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                   
                   {!curve.isLocked && !isExporting && (
                     <>
-                      {/* Standardized Label Display (Hover or Active) */}
                       {(isActive || isHovered) && (
-                        <g transform={`translate(${curve.mean}, ${curve.amplitude + 0.4}) scale(1, -1)`}>
+                        <g transform={`translate(${curve.mean}, ${curve.amplitude + (0.4 / zoom)}) scale(1, -1)`}>
                           <text 
-                            fontSize="0.25" 
+                            fontSize={0.25 / zoom} 
                             textAnchor="middle" 
                             fill={theme === 'dark' ? 'white' : 'black'}
                             className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
@@ -297,7 +331,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                         cursor="move"
                         color={curve.color}
                         isActive={isActive}
-                        size={handleSize}
+                        size={handleSize / zoom}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'mean-amplitude' }); }}
                         onMouseEnter={() => setHoveredPeakId(curve.id)}
                         onMouseLeave={() => setHoveredPeakId(null)}
@@ -308,7 +342,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                         cursor="ew-resize"
                         color={curve.color}
                         isActive={drag?.curveId === curve.id && drag?.type === 'sigma'}
-                        size={handleSize}
+                        size={handleSize / zoom}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'sigma' }); }}
                       />
                     </>
