@@ -18,6 +18,10 @@ const App: React.FC = () => {
   const [activeExportSettings, setActiveExportSettings] = useState<ExportSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [showXValues, setShowXValues] = useState(true);
+  const [showYValues, setShowYValues] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showAxes, setShowAxes] = useState(true);
   
   const [appSettings, setAppSettings] = useState<AppSettings>({
     theme: 'dark',
@@ -64,17 +68,23 @@ const App: React.FC = () => {
     if (!isExporting || !activeExportSettings) return;
 
     const capture = async () => {
-      const svg = document.querySelector('svg');
-      if (!svg) return;
+      // ENSURE we target the unique canvas SVG ID to avoid capturing UI icons
+      // Fix: Convert HTMLElement to unknown first to safely cast to SVGElement
+      const svgElement = (document.getElementById('main-canvas-svg') as unknown) as SVGElement | null;
+      if (!svgElement) {
+        setIsExporting(false);
+        return;
+      }
 
-      await new Promise(r => setTimeout(r, 100));
+      // Small delay to ensure state-driven visibility changes (like handles disappearing) are reflected
+      await new Promise(r => setTimeout(r, 200));
 
-      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgData = new XMLSerializer().serializeToString(svgElement);
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      const svgSize = svg.getBoundingClientRect();
+      const svgSize = svgElement.getBoundingClientRect();
       
-      const scale = 4;
+      const scale = 4; // High resolution scale for clear output
       canvas.width = svgSize.width * scale;
       canvas.height = svgSize.height * scale;
       
@@ -133,7 +143,7 @@ const App: React.FC = () => {
               ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
               ctx.lineTo(bx + radius, by + bh);
               ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - radius);
-              ctx.lineTo(bx, by + radius);
+              ctx.lineTo(bx + radius, by + radius);
               ctx.quadraticCurveTo(bx, by, bx + radius, by);
               ctx.closePath();
               ctx.fill();
@@ -184,8 +194,14 @@ const App: React.FC = () => {
   const theme = appSettings.theme;
 
   return (
-    <div className={`flex w-screen h-screen transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
-      <main className="flex-1 flex flex-col relative overflow-hidden">
+    <div 
+      className={`fixed inset-0 grid grid-cols-[minmax(0,1fr)_auto] transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}
+      style={{ 
+        gridTemplateColumns: `minmax(0, 1fr) ${isSidebarOpen ? '320px' : '0px'}`,
+        transition: 'grid-template-columns 500ms cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
+      <main className="relative flex flex-col overflow-hidden h-full">
         {/* Header Overlay */}
         <header className="absolute top-0 left-0 w-full p-8 md:p-12 z-10 pointer-events-none flex justify-between items-start">
           <div className="flex flex-col gap-1 pointer-events-auto max-w-lg">
@@ -217,6 +233,7 @@ const App: React.FC = () => {
               } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
               title={t.open}
             >
+              {/* Fix: use size={20} instead of size(20) */}
               <PanelLeftOpenIcon size={20} />
             </button>
           </div>
@@ -235,17 +252,63 @@ const App: React.FC = () => {
           handleSize={appSettings.handleSize}
           curveOpacity={appSettings.curveOpacity}
           language={appSettings.language}
+          showXValues={isExporting ? !!activeExportSettings?.showXValues : showXValues}
+          showYValues={isExporting ? !!activeExportSettings?.showYValues : showYValues}
+          showGrid={isExporting ? !!activeExportSettings?.showGrid : showGrid}
+          showAxes={isExporting ? !!activeExportSettings?.showAxes : showAxes}
         />
 
-        {/* Legend Overlay (UI Only) */}
+        {/* Labels Control Overlay */}
         {!isExporting && (
-          <div className="absolute bottom-8 md:bottom-12 left-8 md:left-12 flex flex-wrap gap-4 pointer-events-none max-w-xl">
+          <div className="absolute bottom-6 left-4 md:bottom-10 md:left-10 flex flex-wrap gap-x-6 gap-y-2 z-20">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={showGrid} 
+                onChange={() => setShowGrid(!showGrid)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+              />
+              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showGrid}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={showAxes} 
+                onChange={() => setShowAxes(!showAxes)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+              />
+              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showAxes}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={showXValues} 
+                onChange={() => setShowXValues(!showXValues)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+              />
+              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showXValues}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={showYValues} 
+                onChange={() => setShowYValues(!showYValues)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+              />
+              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showYValues}</span>
+            </label>
+          </div>
+        )}
+
+        {/* Legend Overlay - Positioned within frame bounds */}
+        {!isExporting && (
+          <div className="absolute bottom-20 md:bottom-24 left-4 md:left-10 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
             {curves.filter(c => c.isVisible).map(c => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
-                <div className="w-3 h-3 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.2)]" style={{ backgroundColor: c.color }} />
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase tracking-tighter opacity-40 leading-none mb-1">{c.name}</span>
-                  <span className="text-[10px] mono font-bold opacity-80 leading-none">μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}</span>
+              <div key={c.id} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]" style={{ backgroundColor: c.color }} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-tighter opacity-40 leading-none mb-1 truncate">{c.name}</span>
+                  <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}</span>
                 </div>
               </div>
             ))}
@@ -262,7 +325,21 @@ const App: React.FC = () => {
         onDeleteCurve={deleteCurve}
         onUpdateCurve={updateCurve}
         onSettingsToggle={() => setIsSettingsModalOpen(true)}
-        onExport={() => setIsExportModalOpen(true)}
+        onExport={() => {
+          // Initialize modal with current UI state
+          setActiveExportSettings({
+            showTitle: true,
+            title: title,
+            showLegend: true,
+            showScales: true,
+            showGrid: showGrid,
+            showAxes: showAxes,
+            showXValues: showXValues,
+            showYValues: showYValues,
+            selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
+          });
+          setIsExportModalOpen(true);
+        }}
         language={appSettings.language}
       />
 
@@ -273,6 +350,7 @@ const App: React.FC = () => {
         curves={curves}
         theme={theme}
         currentTitle={title}
+        initialSettings={activeExportSettings}
         language={appSettings.language}
       />
 

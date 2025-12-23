@@ -24,7 +24,7 @@ export const translations = {
     large: "Large",
     transparent: "Transparent",
     solid: "Solid",
-    savePrefs: "Save Preferences",
+    savePrefs: "Close",
     exportTitle: "Export Visualization",
     docTitle: "Document Title",
     visible: "VISIBLE",
@@ -33,7 +33,7 @@ export const translations = {
     showScales: "Show Scales",
     individualCurves: "Individual Curves",
     cancel: "Cancel",
-    download: "Download High-Res Image",
+    download: "Download Image",
     peak: "Peak",
     settingsIcon: "Settings",
     exportIcon: "Export Image",
@@ -41,7 +41,11 @@ export const translations = {
     open: "Open Sidebar",
     mean: "Mean",
     stdDev: "Std Dev",
-    amplitude: "Amplitude"
+    amplitude: "Amplitude",
+    showXValues: "Show X values",
+    showYValues: "Show Y values",
+    showGrid: "Show Grid",
+    showAxes: "Show Axes"
   },
   fr: {
     appSubtitle: "Moteur de Distribution Gaussienne",
@@ -65,7 +69,7 @@ export const translations = {
     large: "Large",
     transparent: "Transparent",
     solid: "Plein",
-    savePrefs: "Sauvegarder",
+    savePrefs: "Fermer",
     exportTitle: "Exporter la Visualisation",
     docTitle: "Titre du Document",
     visible: "VISIBLE",
@@ -82,6 +86,10 @@ export const translations = {
     open: "Ouvrir le volet",
     mean: "Moyenne",
     stdDev: "Écart Type",
-    amplitude: "Amplitude"
+    amplitude: "Amplitude",
+    showXValues: "Afficher les valeurs X",
+    showYValues: "Afficher les valeurs Y",
+    showGrid: "Afficher la grille",
+    showAxes: "Afficher les axes"
   }
 };

@@ -31,6 +31,10 @@ export interface ExportSettings {
   title: string;
   showLegend: boolean;
   showScales: boolean;
+  showGrid: boolean;
+  showAxes: boolean;
+  showXValues: boolean;
+  showYValues: boolean;
   selectedCurveIds: string[];
 }
 

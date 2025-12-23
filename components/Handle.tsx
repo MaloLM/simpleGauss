@@ -6,8 +6,9 @@ interface HandleProps {
   y: number;
   cursor: string;
   onMouseDown: (e: React.MouseEvent) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   color: string;
-  tooltip?: string;
   isActive?: boolean;
   size?: number;
 }
@@ -17,8 +18,9 @@ const Handle: React.FC<HandleProps> = ({
   y, 
   cursor, 
   onMouseDown, 
+  onMouseEnter,
+  onMouseLeave,
   color, 
-  tooltip, 
   isActive, 
   size = 0.1 
 }) => {
@@ -26,9 +28,11 @@ const Handle: React.FC<HandleProps> = ({
     <g 
       className="group cursor-pointer select-none" 
       onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{ cursor }}
     >
-      {/* Hit area - slightly larger than visible handle for better touch/click experience */}
+      {/* Hit area - larger than visible handle for accessibility */}
       <circle cx={x} cy={y} r={size * 2.5} fill="transparent" />
       
       {/* Main Handle Circle */}
@@ -41,19 +45,6 @@ const Handle: React.FC<HandleProps> = ({
         className="stroke-white"
         strokeWidth="2"
       />
-      
-      {tooltip && (
-        <g transform={`translate(${x}, ${y - size * 3.5}) scale(1, -1)`}>
-           <text
-            textAnchor="middle"
-            fontSize="0.22"
-            className="opacity-0 group-hover:opacity-100 fill-slate-400 font-bold pointer-events-none transition-opacity"
-            style={{ userSelect: 'none' }}
-          >
-            {tooltip}
-          </text>
-        </g>
-      )}
     </g>
   );
 };

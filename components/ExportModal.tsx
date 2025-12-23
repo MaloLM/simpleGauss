@@ -11,10 +11,20 @@ interface ExportModalProps {
   curves: GaussianCurve[];
   theme: Theme;
   currentTitle: string;
+  initialSettings: ExportSettings | null;
   language: Language;
 }
 
-const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, curves, theme, currentTitle, language }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  curves, 
+  theme, 
+  currentTitle, 
+  initialSettings,
+  language 
+}) => {
   const t = translations[language];
   
   const [settings, setSettings] = useState<ExportSettings>({
@@ -22,20 +32,18 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
     title: currentTitle,
     showLegend: true,
     showScales: true,
+    showGrid: true,
+    showAxes: true,
+    showXValues: true,
+    showYValues: true,
     selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
   });
 
   useEffect(() => {
-    if (isOpen) {
-      setSettings({
-        showTitle: true,
-        title: currentTitle,
-        showLegend: true,
-        showScales: true,
-        selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
-      });
+    if (isOpen && initialSettings) {
+      setSettings(initialSettings);
     }
-  }, [isOpen, curves, currentTitle]);
+  }, [isOpen, initialSettings]);
 
   if (!isOpen) return null;
 
@@ -89,21 +97,49 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, c
             />
           </section>
 
-          {/* Visibility Toggles */}
-          <section className="grid grid-cols-2 gap-4">
+          {/* Visibility Toggles Grid */}
+          <section className="grid grid-cols-2 gap-3">
             <button 
               onClick={() => setSettings(s => ({ ...s, showLegend: !s.showLegend }))}
-              className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${settings.showLegend ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showLegend ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
             >
-              <span className="text-sm font-bold uppercase tracking-wider">{t.includeLegend}</span>
-              {settings.showLegend ? <CheckCircle2Icon size={18} /> : <CircleIcon size={18} />}
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.includeLegend}</span>
+              {settings.showLegend ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
             </button>
             <button 
               onClick={() => setSettings(s => ({ ...s, showScales: !s.showScales }))}
-              className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${settings.showScales ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showScales ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
             >
-              <span className="text-sm font-bold uppercase tracking-wider">{t.showScales}</span>
-              {settings.showScales ? <CheckCircle2Icon size={18} /> : <CircleIcon size={18} />}
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.showScales}</span>
+              {settings.showScales ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
+            </button>
+            <button 
+              onClick={() => setSettings(s => ({ ...s, showGrid: !s.showGrid }))}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showGrid ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.showGrid}</span>
+              {settings.showGrid ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
+            </button>
+            <button 
+              onClick={() => setSettings(s => ({ ...s, showAxes: !s.showAxes }))}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showAxes ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.showAxes}</span>
+              {settings.showAxes ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
+            </button>
+            <button 
+              onClick={() => setSettings(s => ({ ...s, showXValues: !s.showXValues }))}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showXValues ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.showXValues}</span>
+              {settings.showXValues ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
+            </button>
+            <button 
+              onClick={() => setSettings(s => ({ ...s, showYValues: !s.showYValues }))}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${settings.showYValues ? 'bg-blue-600/10 border-blue-500/50' : 'bg-transparent border-white/5 opacity-50'}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t.showYValues}</span>
+              {settings.showYValues ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
             </button>
           </section>
 

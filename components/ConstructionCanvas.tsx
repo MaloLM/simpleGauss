@@ -17,6 +17,10 @@ interface ConstructionCanvasProps {
   handleSize?: number;
   curveOpacity?: number;
   language: Language;
+  showXValues: boolean;
+  showYValues: boolean;
+  showGrid: boolean;
+  showAxes: boolean;
 }
 
 const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({ 
@@ -30,12 +34,17 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   onPan,
   handleSize = 0.1,
   curveOpacity = 0.12,
-  language
+  language,
+  showXValues,
+  showYValues,
+  showGrid,
+  showAxes
 }) => {
   const t = translations[language];
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [hoveredPeakId, setHoveredPeakId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
 
@@ -62,7 +71,6 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   const yMinBase = -mathHeight * 0.15;
   const yMaxBase = yMinBase + mathHeight;
 
-  // View ranges adjusted by panning
   const xMin = xMinBase + panOffset.x;
   const xMax = xMaxBase + panOffset.x;
   const yMin = yMinBase + panOffset.y;
@@ -81,6 +89,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   const showLabels = !isExporting || showScalesInExport;
 
   const gridLines = useMemo(() => {
+    if (!showGrid) return null;
     const lines = [];
     const stepX = 1;
     const stepY = 0.2;
@@ -108,28 +117,56 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
       );
     }
     return lines;
-  }, [xMin, xMax, yMin, yMax, colors.grid]);
+  }, [xMin, xMax, yMin, yMax, colors.grid, showGrid]);
 
   const labels = useMemo(() => {
     if (!showLabels) return null;
     const texts = [];
-    for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x += 1) {
-      if (x === 0) continue;
-      texts.push(
-        <g key={`label-x-${x}`} transform={`translate(${x}, ${panOffset.y - 0.15}) scale(1, -1)`}>
-          <text 
-            fontSize="0.18" 
-            textAnchor="middle" 
-            fill={colors.text}
-            className="font-bold select-none pointer-events-none"
-          >
-            {x}
-          </text>
-        </g>
-      );
+    
+    // Sticky logic: Clamp labels to screen edges if origin is panned away
+    const xLabelY = Math.max(yMin + 0.3, Math.min(yMax - 0.5, 0)) - 0.2;
+    const yLabelX = Math.max(xMin + 0.1, Math.min(xMax - 0.8, 0)) - 0.3;
+
+    if (showXValues) {
+      for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x += 1) {
+        if (x === 0) continue;
+        texts.push(
+          <g key={`label-x-${x}`} transform={`translate(${x}, ${xLabelY}) scale(1, -1)`}>
+            <text 
+              fontSize="0.18" 
+              textAnchor="middle" 
+              fill={colors.text}
+              className="font-bold select-none pointer-events-none"
+            >
+              {x}
+            </text>
+          </g>
+        );
+      }
     }
+
+    if (showYValues) {
+      const stepY = 1; 
+      for (let y = Math.floor(yMin / stepY) * stepY; y <= Math.ceil(yMax / stepY) * stepY; y += stepY) {
+        if (Math.abs(y) < 0.001) continue;
+        texts.push(
+          <g key={`label-y-${y}`} transform={`translate(${yLabelX}, ${y}) scale(1, -1)`}>
+            <text 
+              fontSize="0.16" 
+              textAnchor="end" 
+              alignmentBaseline="middle"
+              fill={colors.text}
+              className="font-bold select-none pointer-events-none"
+            >
+              {Math.round(y)}
+            </text>
+          </g>
+        );
+      }
+    }
+
     return texts;
-  }, [xMin, xMax, colors.text, showLabels, panOffset.y]);
+  }, [xMin, xMax, yMin, yMax, colors.text, showLabels, showXValues, showYValues]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -189,7 +226,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={`w-full h-full flex items-center justify-center p-4 md:p-10 transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}
+      className={`w-full h-full flex items-center justify-center p-4 md:p-10 pb-16 md:pb-24 transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}
     >
       <div 
         className={`relative w-full h-full shadow-2xl rounded-3xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -197,6 +234,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
       >
         <svg
           ref={svgRef}
+          id="main-canvas-svg"
           viewBox={`${xMin} ${-yMax} ${mathWidth} ${mathHeight}`}
           className="w-full h-full select-none"
           preserveAspectRatio="xMidYMid meet"
@@ -204,9 +242,12 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
         >
           <g transform="scale(1, -1)">
             {gridLines}
-            {/* Origin Axes */}
-            <line x1={xMin} y1={0} x2={xMax} y2={0} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
-            <line x1={0} y1={yMin} x2={0} y2={yMax} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+            {showAxes && (
+              <>
+                <line x1={xMin} y1={0} x2={xMax} y2={0} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+                <line x1={0} y1={yMin} x2={0} y2={yMax} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+              </>
+            )}
             
             {labels}
 
@@ -214,6 +255,8 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
               const path = generateGaussianPath(curve.mean, curve.sigma, curve.amplitude, xMin, xMax, 250);
               const sideHandleX = curve.mean + curve.sigma;
               const sideHandleY = calculateGaussian(sideHandleX, curve.mean, curve.sigma, curve.amplitude);
+              const isActive = drag?.curveId === curve.id && drag?.type === 'mean-amplitude';
+              const isHovered = hoveredPeakId === curve.id;
 
               return (
                 <g key={curve.id}>
@@ -234,15 +277,30 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                   
                   {!curve.isLocked && !isExporting && (
                     <>
+                      {/* Standardized Label Display (Hover or Active) */}
+                      {(isActive || isHovered) && (
+                        <g transform={`translate(${curve.mean}, ${curve.amplitude + 0.4}) scale(1, -1)`}>
+                          <text 
+                            fontSize="0.25" 
+                            textAnchor="middle" 
+                            fill={theme === 'dark' ? 'white' : 'black'}
+                            className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
+                          >
+                            {curve.name}
+                          </text>
+                        </g>
+                      )}
+
                       <Handle
                         x={curve.mean}
                         y={curve.amplitude}
                         cursor="move"
                         color={curve.color}
-                        isActive={drag?.curveId === curve.id && drag?.type === 'mean-amplitude'}
-                        tooltip={`${curve.name} ${t.peak}`}
+                        isActive={isActive}
                         size={handleSize}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'mean-amplitude' }); }}
+                        onMouseEnter={() => setHoveredPeakId(curve.id)}
+                        onMouseLeave={() => setHoveredPeakId(null)}
                       />
                       <Handle
                         x={sideHandleX}

@@ -137,7 +137,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         <div className="p-6 bg-black/20 text-center">
           <button 
             onClick={onClose}
-            className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs bg-blue-600 text-white shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95"
+            className={`px-12 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'}`}
           >
             {t.savePrefs}
           </button>
