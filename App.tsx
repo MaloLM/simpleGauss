@@ -11,7 +11,7 @@ import { PanelLeftOpenIcon, PanelLeftCloseIcon, RefreshCcwIcon } from 'lucide-re
 
 const App: React.FC = () => {
   const [curves, setCurves] = useState<GaussianCurve[]>(INITIAL_CURVES);
-  const [title, setTitle] = useState('Distribution Model - 01');
+  const [title, setTitle] = useState('Distribution Model');
   const [isExporting, setIsExporting] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -204,9 +204,8 @@ const App: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               // Slightly less bold title weight: font-extrabold instead of font-black
-              className={`text-3xl md:text-4xl font-extrabold bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
+              className={`text-3xl md:text-4xl bg-transparent border-none focus:ring-0 w-full p-1 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
             />
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em]">{t.appSubtitle}</p>
           </div>
           
           <div className="flex gap-3 pointer-events-auto items-center">

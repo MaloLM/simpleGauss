@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const t = translations[language];
   const isDark = theme === 'dark';
-  const isLimitReached = curves.length >= 15;
+  const isLimitReached = curves.length >= 12;
 
   return (
     <aside 

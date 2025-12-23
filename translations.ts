@@ -3,13 +3,12 @@ import { Language } from './types';
 
 export const translations = {
   en: {
-    appSubtitle: "Gaussian Distribution Engine",
     reset: "Reset",
     inspector: "Inspector",
     constructionSet: "Construction Set",
     new: "New",
-    activeCount: (count: number) => `${count} / 15 active`,
-    limitReached: "Max limit of 15 curves reached. Remove one to add more.",
+    activeCount: (count: number) => `${count} / 12 active`,
+    limitReached: "Max limit of 12 curves reached. Remove one to add more.",
     noCurves: "No active curves.",
     createFirst: "Create your first curve",
     proTip: "PRO TIP: Drag the top handle for mean/amplitude and the side handle for standard deviation.",
@@ -53,8 +52,8 @@ export const translations = {
     inspector: "Inspecteur",
     constructionSet: "Ensemble de Construction",
     new: "Nouveau",
-    activeCount: (count: number) => `${count} / 15 actives`,
-    limitReached: "Limite de 15 courbes atteinte. Supprimez-en une pour en ajouter.",
+    activeCount: (count: number) => `${count} / 12 actives`,
+    limitReached: "Limite de 12 courbes atteinte. Supprimez-en une pour en ajouter.",
     noCurves: "Aucune courbe active.",
     createFirst: "Créez votre première courbe",
     proTip: "ASTUCE PRO : Faites glisser la poignée supérieure pour la moyenne/amplitude et la poignée latérale pour l'écart type.",

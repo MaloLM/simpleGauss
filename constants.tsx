@@ -22,7 +22,7 @@ export const INITIAL_CURVES = [
     name: 'Standard Normal',
     mean: 0,
     sigma: 1,
-    amplitude: 0.8,
+    amplitude: 5,
     color: '#3b82f6',
     isVisible: true,
     isLocked: false,
