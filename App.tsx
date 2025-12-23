@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar';
 import ExportModal from './components/ExportModal';
 import SettingsModal from './components/SettingsModal';
 import { translations } from './translations';
-import { PanelLeftOpenIcon, PanelLeftCloseIcon, RefreshCcwIcon } from 'lucide-react';
+import { PanelLeftOpenIcon, PanelLeftCloseIcon, RefreshCcwIcon, PlusIcon, MinusIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [curves, setCurves] = useState<GaussianCurve[]>(INITIAL_CURVES);
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [activeExportSettings, setActiveExportSettings] = useState<ExportSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [showXValues, setShowXValues] = useState(true);
   const [showYValues, setShowYValues] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
@@ -62,20 +63,22 @@ const App: React.FC = () => {
 
   const resetView = useCallback(() => {
     setPanOffset({ x: 0, y: 0 });
+    setZoom(1);
   }, []);
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 50));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
 
   useEffect(() => {
     if (!isExporting || !activeExportSettings) return;
 
     const capture = async () => {
-      // ENSURE we target the unique canvas SVG ID to avoid capturing UI icons
       const svgElement = document.getElementById('main-canvas-svg') as unknown as SVGElement | null;
       if (!svgElement) {
         setIsExporting(false);
         return;
       }
 
-      // Small delay to ensure state-driven visibility changes (like handles disappearing) are reflected
       await new Promise(r => setTimeout(r, 200));
 
       const svgData = new XMLSerializer().serializeToString(svgElement);
@@ -83,7 +86,7 @@ const App: React.FC = () => {
       const ctx = canvas.getContext('2d');
       const svgSize = svgElement.getBoundingClientRect();
       
-      const scale = 4; // High resolution scale for clear output
+      const scale = 4;
       canvas.width = svgSize.width * scale;
       canvas.height = svgSize.height * scale;
       
@@ -106,7 +109,6 @@ const App: React.FC = () => {
           if (activeExportSettings.showTitle) {
             let baseFontSize = 80 * scale;
             const maxTitleWidth = canvas.width * 0.85;
-            // Slightly less bold title font weight (800 instead of 900)
             ctx.font = `800 ${baseFontSize}px Inter, sans-serif`;
             let textWidth = ctx.measureText(activeExportSettings.title).width;
             while (textWidth > maxTitleWidth && baseFontSize > 20 * scale) {
@@ -203,23 +205,42 @@ const App: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              // Slightly less bold title weight: font-extrabold instead of font-black
-              className={`text-3xl md:text-4xl bg-transparent border-none focus:ring-0 w-full p-1 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
+              className={`text-3xl md:text-4xl font-extrabold bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
             />
           </div>
           
           <div className="flex gap-3 pointer-events-auto items-center">
+            {/* Reset Button */}
             <button 
               onClick={resetView}
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                panOffset.x === 0 && panOffset.y === 0 ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
+                panOffset.x === 0 && panOffset.y === 0 && zoom === 1 ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
               } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
               title={t.reset}
             >
               <RefreshCcwIcon size={18} />
               <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{t.reset}</span>
             </button>
+
+            {/* Zoom Buttons Group (NEW) */}
+            <div className={`flex gap-1 p-1 rounded-2xl ${theme === 'dark' ? 'bg-slate-800 border border-white/10' : 'bg-white border border-slate-200'} shadow-xl`}>
+              <button 
+                onClick={handleZoomIn}
+                className={`p-2 rounded-xl transition-all hover:bg-blue-500/10 hover:text-blue-500`}
+                title="Zoom In"
+              >
+                <PlusIcon size={18} />
+              </button>
+              <button 
+                onClick={handleZoomOut}
+                className={`p-2 rounded-xl transition-all hover:bg-blue-500/10 hover:text-blue-500`}
+                title="Zoom Out"
+              >
+                <MinusIcon size={18} />
+              </button>
+            </div>
             
+            {/* Sidebar Toggle Button */}
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
@@ -240,6 +261,8 @@ const App: React.FC = () => {
           onUpdateCurve={updateCurve}
           panOffset={panOffset}
           onPan={setPanOffset}
+          zoom={zoom}
+          onZoom={setZoom}
           handleSize={appSettings.handleSize}
           curveOpacity={appSettings.curveOpacity}
           language={appSettings.language}
@@ -291,7 +314,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Legend Overlay - Positioned within frame bounds with adjusted spacing */}
+        {/* Legend Overlay */}
         {!isExporting && (
           <div className="absolute bottom-24 md:bottom-28 left-8 md:left-14 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
             {curves.filter(c => c.isVisible).map(c => (
@@ -317,7 +340,6 @@ const App: React.FC = () => {
         onUpdateCurve={updateCurve}
         onSettingsToggle={() => setIsSettingsModalOpen(true)}
         onExport={() => {
-          // Initialize modal with current UI state
           setActiveExportSettings({
             showTitle: true,
             title: title,
