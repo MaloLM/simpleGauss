@@ -167,9 +167,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <input
                       type="number"
                       step="0.1"
-                      min="0.1"
+                      min="0.05"
                       value={curve.sigma.toFixed(2)}
-                      onChange={(e) => onUpdateCurve(curve.id, { sigma: Math.max(0.1, parseFloat(e.target.value)) })}
+                      onChange={(e) => onUpdateCurve(curve.id, { sigma: Math.max(0.05, parseFloat(e.target.value)) })}
                       className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
                     />
                   </div>
@@ -181,8 +181,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center gap-2">
                       <input
                         type="range"
-                        min="0.1"
-                        max="1.5"
+                        min="0.01"
+                        max="5"
                         step="0.05"
                         value={curve.amplitude}
                         onChange={(e) => onUpdateCurve(curve.id, { amplitude: parseFloat(e.target.value) })}

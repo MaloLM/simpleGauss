@@ -251,7 +251,7 @@ const App: React.FC = () => {
 
         {/* Labels Control Overlay */}
         {!isExporting && (
-          <div className="absolute bottom-6 left-4 md:bottom-10 md:left-10 flex flex-wrap gap-x-6 gap-y-2 z-20">
+          <div className="absolute bottom-12 left-4 md:bottom-16 md:left-10 flex flex-wrap gap-x-6 gap-y-2 z-20">
             <label className="flex items-center gap-2 cursor-pointer group">
               <input 
                 type="checkbox" 

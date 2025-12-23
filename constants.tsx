@@ -3,7 +3,7 @@ export const DEFAULT_VIEW_BOX = {
   xMin: -7,
   xMax: 7,
   yMin: 0,
-  yMax: 1.5,
+  yMax: 5,
 };
 
 export const COLORS = [

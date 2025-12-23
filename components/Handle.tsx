@@ -21,7 +21,6 @@ const Handle: React.FC<HandleProps> = ({
   onMouseEnter,
   onMouseLeave,
   color, 
-  isActive, 
   size = 0.1 
 }) => {
   return (

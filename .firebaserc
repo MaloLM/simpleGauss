@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "simplegaussapp"
+  },
+  "targets": {
+    "simplegaussapp": {
+      "hosting": {
+        "gauss": [
+          "gauss-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
