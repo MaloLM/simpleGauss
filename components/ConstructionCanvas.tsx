@@ -83,16 +83,16 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   const yMax = yMaxBase + panOffset.y;
 
   const colors = theme === 'dark' ? {
-    grid: 'rgba(255, 255, 255, 0.05)',
+    grid: isExporting ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
     axis: 'rgba(255, 255, 255, 0.2)',
-    text: 'rgba(255, 255, 255, 0.4)',
+    text: isExporting ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.4)',
   } : {
-    grid: 'rgba(0, 0, 0, 0.04)',
+    grid: isExporting ? 'rgba(0, 0, 0, 0.07)' : 'rgba(0, 0, 0, 0.04)',
     axis: 'rgba(0, 0, 0, 0.12)',
-    text: 'rgba(0, 0, 0, 0.5)',
+    text: isExporting ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
   };
 
-  const showLabels = !isExporting || showScalesInExport;
+  const showLabels = true;
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     // Zoom centered on viewport
@@ -124,8 +124,8 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
           key={`grid-x-${x}`} 
           x1={x} y1={yMin} x2={x} y2={yMax} 
           stroke={colors.grid} 
-          strokeWidth="1" 
-          style={{ vectorEffect: 'non-scaling-stroke' }} 
+          strokeWidth={isExporting ? 0.003 / zoom : "1"} 
+          style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }} 
         />
       );
     }
@@ -135,8 +135,8 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
           key={`grid-y-${y}`} 
           x1={xMin} y1={y} x2={xMax} y2={y} 
           stroke={colors.grid} 
-          strokeWidth="1" 
-          style={{ vectorEffect: 'non-scaling-stroke' }} 
+          strokeWidth={isExporting ? 0.003 / zoom : "1"} 
+          style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }} 
         />
       );
     }
@@ -165,6 +165,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
               fontSize={fontSize} 
               textAnchor="middle" 
               fill={colors.text}
+              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 'bold' }}
               className="font-bold select-none pointer-events-none"
             >
               {parseFloat(x.toFixed(1))}
@@ -188,6 +189,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
               textAnchor="end" 
               alignmentBaseline="middle"
               fill={colors.text}
+              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 'bold' }}
               className="font-bold select-none pointer-events-none"
             >
               {parseFloat(y.toFixed(1))}
@@ -250,7 +252,12 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   }, [drag, isPanning, curves, mathWidth, mathHeight, xMin, yMin, onUpdateCurve, onPan]);
 
   const handleBgMouseDown = (e: React.MouseEvent) => {
-    if (e.target === svgRef.current || (e.target as any).tagName === 'line' || (e.target as any).tagName === 'rect') {
+    // Allow panning if clicking on the SVG background, grid lines, axes, or the curves themselves.
+    // Handles have their own onMouseDown with stopPropagation, so they won't trigger this.
+    const target = e.target as SVGElement;
+    const isHandle = target.closest('.handle-group');
+    
+    if (!isHandle) {
       setIsPanning(true);
     }
   };
@@ -262,7 +269,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
       onWheel={onWheel}
     >
       <div 
-        className={`relative w-full h-full shadow-2xl rounded-3xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`relative w-full h-full shadow-2xl rounded-3xl overflow-hidden ${isExporting ? '' : 'bg-white/5 backdrop-blur-sm border border-white/10'} ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         onMouseDown={handleBgMouseDown}
       >
         <svg
@@ -272,15 +279,26 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
           className="w-full h-full select-none"
           preserveAspectRatio="xMidYMid meet"
           xmlns="http://www.w3.org/2000/svg"
+          style={isExporting ? { background: 'transparent' } : {}}
         >
           <g transform="scale(1, -1)">
             {gridLines}
             {showAxes && (
               <>
                 {/* Horizontal Axis */}
-                <line x1={xMin} y1={0} x2={xMax} y2={0} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+                <line 
+                  x1={xMin} y1={0} x2={xMax} y2={0} 
+                  stroke={colors.axis} 
+                  strokeWidth={isExporting ? 0.028 / zoom : "2"} 
+                  style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }} 
+                />
                 {/* Vertical Axis - FIXED: extended y2 to yMax instead of 0 */}
-                <line x1={0} y1={yMin} x2={0} y2={yMax} stroke={colors.axis} strokeWidth="2" style={{ vectorEffect: 'non-scaling-stroke' }} />
+                <line 
+                  x1={0} y1={yMin} x2={0} y2={yMax} 
+                  stroke={colors.axis} 
+                  strokeWidth={isExporting ? 0.028 / zoom : "2"} 
+                  style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }} 
+                />
               </>
             )}
             
@@ -304,10 +322,10 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                     d={path}
                     fill="none"
                     stroke={curve.color}
-                    strokeWidth="3"
+                    strokeWidth={isExporting ? 0.04 / zoom : "3"}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ vectorEffect: 'non-scaling-stroke' }}
+                    style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
                   />
                   
                   {!curve.isLocked && !isExporting && (

@@ -1,21 +1,33 @@
-
-import React, { useState, useCallback, useEffect } from 'react';
-import { GaussianCurve, Theme, ViewBox, ExportSettings, AppSettings } from './types';
-import { DEFAULT_VIEW_BOX, COLORS, INITIAL_CURVES } from './constants';
-import ConstructionCanvas from './components/ConstructionCanvas';
-import Sidebar from './components/Sidebar';
-import ExportModal from './components/ExportModal';
-import SettingsModal from './components/SettingsModal';
-import { translations } from './translations';
-import { PanelLeftOpenIcon, PanelLeftCloseIcon, RefreshCcwIcon, PlusIcon, MinusIcon } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  GaussianCurve,
+  Theme,
+  ViewBox,
+  ExportSettings,
+  AppSettings,
+} from "./types";
+import { DEFAULT_VIEW_BOX, COLORS, INITIAL_CURVES } from "./constants";
+import ConstructionCanvas from "./components/ConstructionCanvas";
+import Sidebar from "./components/Sidebar";
+import ExportModal from "./components/ExportModal";
+import SettingsModal from "./components/SettingsModal";
+import { translations } from "./translations";
+import {
+  PanelLeftOpenIcon,
+  PanelLeftCloseIcon,
+  RefreshCcwIcon,
+  PlusIcon,
+  MinusIcon,
+} from "lucide-react";
 
 const App: React.FC = () => {
   const [curves, setCurves] = useState<GaussianCurve[]>(INITIAL_CURVES);
-  const [title, setTitle] = useState('Distribution Model');
+  const [title, setTitle] = useState("Distribution Model");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [activeExportSettings, setActiveExportSettings] = useState<ExportSettings | null>(null);
+  const [activeExportSettings, setActiveExportSettings] =
+    useState<ExportSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -23,18 +35,18 @@ const App: React.FC = () => {
   const [showYValues, setShowYValues] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(true);
-  
+
   const [appSettings, setAppSettings] = useState<AppSettings>({
-    theme: 'dark',
+    theme: "dark",
     handleSize: 0.1,
-    curveOpacity: 0.12,
-    language: 'en'
+    curveOpacity: 0.1,
+    language: "en",
   });
 
   const t = translations[appSettings.language];
 
   const updateAppSettings = useCallback((updates: Partial<AppSettings>) => {
-    setAppSettings(prev => ({ ...prev, ...updates }));
+    setAppSettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const addCurve = useCallback(() => {
@@ -42,7 +54,10 @@ const App: React.FC = () => {
     const newId = Math.random().toString(36).substr(2, 9);
     const newCurve: GaussianCurve = {
       id: newId,
-      name: appSettings.language === 'en' ? `Curve ${curves.length + 1}` : `Courbe ${curves.length + 1}`,
+      name:
+        appSettings.language === "en"
+          ? `Curve ${curves.length + 1}`
+          : `Courbe ${curves.length + 1}`,
       mean: (Math.random() - 0.5) * 6 + panOffset.x,
       sigma: 0.8 + Math.random() * 0.4,
       amplitude: 0.6 + Math.random() * 0.4,
@@ -50,81 +65,124 @@ const App: React.FC = () => {
       isVisible: true,
       isLocked: false,
     };
-    setCurves(prev => [...prev, newCurve]);
+    setCurves((prev) => [...prev, newCurve]);
   }, [curves.length, panOffset.x, appSettings.language]);
 
   const deleteCurve = useCallback((id: string) => {
-    setCurves(prev => prev.filter(c => c.id !== id));
+    setCurves((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
-  const updateCurve = useCallback((id: string, updates: Partial<GaussianCurve>) => {
-    setCurves(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  }, []);
+  const updateCurve = useCallback(
+    (id: string, updates: Partial<GaussianCurve>) => {
+      setCurves((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+      );
+    },
+    []
+  );
 
   const resetView = useCallback(() => {
     setPanOffset({ x: 0, y: 0 });
     setZoom(1);
   }, []);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 50));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev * 1.2, 50));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev / 1.2, 0.1));
 
   useEffect(() => {
     if (!isExporting || !activeExportSettings) return;
 
     const capture = async () => {
-      const svgElement = document.getElementById('main-canvas-svg') as unknown as SVGElement | null;
+      const svgElement = document.getElementById(
+        "main-canvas-svg"
+      ) as unknown as SVGElement | null;
       if (!svgElement) {
         setIsExporting(false);
         return;
       }
 
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
-      const svgData = new XMLSerializer().serializeToString(svgElement);
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const svgSize = svgElement.getBoundingClientRect();
+      // Ensure all styles are computed and applied inline for the capture
+      const svgClone = svgElement.cloneNode(true) as SVGElement;
       
+      // Explicitly set dimensions on the clone to ensure it's not 0x0
+      svgClone.setAttribute('width', svgElement.clientWidth.toString());
+      svgClone.setAttribute('height', svgElement.clientHeight.toString());
+
+      // Inject styles to ensure text is visible and smaller
+      const style = document.createElement('style');
+      style.textContent = `
+        text { 
+          font-family: Inter, system-ui, sans-serif !important;
+          font-weight: bold !important;
+          font-size: 0.14px !important;
+        }
+      `;
+      svgClone.prepend(style);
+
+      const svgData = new XMLSerializer().serializeToString(svgClone);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const svgSize = svgElement.getBoundingClientRect();
+
       const scale = 4;
       canvas.width = svgSize.width * scale;
       canvas.height = svgSize.height * scale;
-      
+
       const img = new Image();
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
       const url = URL.createObjectURL(svgBlob);
 
       img.onload = () => {
         if (ctx) {
-          const isDark = appSettings.theme === 'dark';
-          const bgColor = isDark ? '#0f172a' : '#f8fafc';
-          const primaryTextColor = isDark ? '#ffffff' : '#0f172a';
-          const secondaryTextColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(15, 23, 42, 0.5)';
-          const legendBgColor = isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+          // Small delay to ensure image is fully ready for drawing
+          const isDark = appSettings.theme === "dark";
+          const bgColor = isDark ? "#0f172a" : "#f8fafc";
+          const primaryTextColor = isDark ? "#ffffff" : "#0f172a";
+          const secondaryTextColor = isDark
+            ? "rgba(255, 255, 255, 0.5)"
+            : "rgba(15, 23, 42, 0.5)";
+          const legendBgColor = isDark
+            ? "rgba(30, 41, 59, 0.8)"
+            : "rgba(255, 255, 255, 0.8)";
 
           ctx.fillStyle = bgColor;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Ensure smooth rendering
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+
+          // Draw the SVG image
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
+
           if (activeExportSettings.showTitle) {
-            let baseFontSize = 80 * scale;
+            let baseFontSize = 32 * scale;
             const maxTitleWidth = canvas.width * 0.85;
-            ctx.font = `800 ${baseFontSize}px Inter, sans-serif`;
+            ctx.font = `600 ${baseFontSize}px Inter, sans-serif`;
             let textWidth = ctx.measureText(activeExportSettings.title).width;
-            while (textWidth > maxTitleWidth && baseFontSize > 20 * scale) {
+            while (textWidth > maxTitleWidth && baseFontSize > 12 * scale) {
               baseFontSize -= 2 * scale;
-              ctx.font = `800 ${baseFontSize}px Inter, sans-serif`;
+              ctx.font = `600 ${baseFontSize}px Inter, sans-serif`;
               textWidth = ctx.measureText(activeExportSettings.title).width;
             }
-            ctx.fillStyle = primaryTextColor;
+            
+            // Match canvas title opacity (60%)
+            const titleColor = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(15, 23, 42, 0.6)';
+            ctx.fillStyle = titleColor;
             ctx.textBaseline = 'top';
             ctx.fillText(activeExportSettings.title, 48 * scale, 48 * scale);
           }
-          
+
           if (activeExportSettings.showLegend) {
-            const legendCurves = curves.filter(c => activeExportSettings.selectedCurveIds.includes(c.id));
+            const legendCurves = curves.filter((c) =>
+              activeExportSettings.selectedCurveIds.includes(c.id)
+            );
             const legendX = 48 * scale;
-            let legendY = canvas.height - (48 * scale);
+            let legendY = canvas.height - 48 * scale;
             const itemHeight = 36 * scale;
             const boxPadding = 12 * scale;
             const boxWidth = 180 * scale;
@@ -136,7 +194,7 @@ const App: React.FC = () => {
               const bw = boxWidth;
               const bh = itemHeight;
               const radius = 8 * scale;
-              
+
               ctx.beginPath();
               ctx.moveTo(bx + radius, by);
               ctx.lineTo(bx + bw - radius, by);
@@ -151,26 +209,42 @@ const App: React.FC = () => {
               ctx.fill();
 
               ctx.beginPath();
-              ctx.arc(legendX + (8 * scale), legendY - (10 * scale), 6 * scale, 0, Math.PI * 2);
+              ctx.arc(
+                legendX + 8 * scale,
+                legendY - 10 * scale,
+                6 * scale,
+                0,
+                Math.PI * 2
+              );
               ctx.fillStyle = curve.color;
               ctx.fill();
 
               ctx.fillStyle = secondaryTextColor;
               ctx.font = `900 ${10 * scale}px Inter, sans-serif`;
-              ctx.fillText(curve.name.toUpperCase(), legendX + (24 * scale), legendY - (22 * scale));
+              ctx.fillText(
+                curve.name.toUpperCase(),
+                legendX + 24 * scale,
+                legendY - 22 * scale
+              );
 
               ctx.fillStyle = primaryTextColor;
               ctx.font = `bold ${12 * scale}px JetBrains Mono, monospace`;
-              ctx.fillText(`μ:${curve.mean.toFixed(1)} σ:${curve.sigma.toFixed(1)}`, legendX + (24 * scale), legendY - (8 * scale));
+              ctx.fillText(
+                `μ:${curve.mean.toFixed(1)} σ:${curve.sigma.toFixed(1)}`,
+                legendX + 24 * scale,
+                legendY - 8 * scale
+              );
 
-              legendY -= (itemHeight + 8 * scale);
+              legendY -= itemHeight + 8 * scale;
             });
           }
-          
-          const pngUrl = canvas.toDataURL('image/png', 1.0);
-          const downloadLink = document.createElement('a');
+
+          const pngUrl = canvas.toDataURL("image/png", 1.0);
+          const downloadLink = document.createElement("a");
           downloadLink.href = pngUrl;
-          downloadLink.download = `${activeExportSettings.title.toLowerCase().replace(/\s+/g, '-')}.png`;
+          downloadLink.download = `${activeExportSettings.title
+            .toLowerCase()
+            .replace(/\s+/g, "-")}.png`;
           downloadLink.click();
         }
         URL.revokeObjectURL(url);
@@ -189,14 +263,23 @@ const App: React.FC = () => {
     setIsExporting(true);
   };
 
-  const displayCurves = isExporting && activeExportSettings
-    ? curves.filter(c => activeExportSettings.selectedCurveIds.includes(c.id))
-    : curves;
+  const displayCurves =
+    isExporting && activeExportSettings
+      ? curves.filter((c) =>
+          activeExportSettings.selectedCurveIds.includes(c.id)
+        )
+      : curves;
 
   const theme = appSettings.theme;
 
   return (
-    <div className={`fixed inset-0 flex transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div
+      className={`fixed inset-0 flex transition-colors duration-500 overflow-hidden ${
+        theme === "dark"
+          ? "bg-slate-900 text-white"
+          : "bg-slate-50 text-slate-900"
+      }`}
+    >
       <main className="relative flex-1 flex flex-col overflow-hidden h-full">
         {/* Header Overlay */}
         <header className="absolute top-0 left-0 w-full p-8 md:p-12 z-10 pointer-events-none flex justify-between items-start">
@@ -205,33 +288,49 @@ const App: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={`text-3xl md:text-4xl font-extrabold bg-transparent border-none focus:ring-0 w-full p-0 outline-none transition-colors ${theme === 'dark' ? 'text-white/90' : 'text-slate-900/90'}`}
+              className={`text-2xl md:text-3xl font-semibold bg-transparent border-none focus:ring-0 w-full p-0 pl-2 outline-none transition-colors ${
+                theme === "dark" ? "text-white/60" : "text-slate-900/60"
+              }`}
             />
           </div>
-          
+
           <div className="flex gap-3 pointer-events-auto items-center">
             {/* Reset Button */}
-            <button 
+            <button
               onClick={resetView}
               className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                panOffset.x === 0 && panOffset.y === 0 && zoom === 1 ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
-              } ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
+                panOffset.x === 0 && panOffset.y === 0 && zoom === 1
+                  ? "opacity-0 scale-90 pointer-events-none"
+                  : "opacity-100 scale-100"
+              } ${
+                theme === "dark"
+                  ? "bg-slate-800 text-white border border-white/10"
+                  : "bg-white text-slate-900 border border-slate-200"
+              }`}
               title={t.reset}
             >
               <RefreshCcwIcon size={18} />
-              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{t.reset}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">
+                {t.reset}
+              </span>
             </button>
 
             {/* Zoom Buttons Group (NEW) */}
-            <div className={`flex gap-1 p-1 rounded-2xl ${theme === 'dark' ? 'bg-slate-800 border border-white/10' : 'bg-white border border-slate-200'} shadow-xl`}>
-              <button 
+            <div
+              className={`flex gap-1 p-1 rounded-2xl ${
+                theme === "dark"
+                  ? "bg-slate-800 border border-white/10"
+                  : "bg-white border border-slate-200"
+              } shadow-xl`}
+            >
+              <button
                 onClick={handleZoomIn}
                 className={`p-2 rounded-xl transition-all hover:bg-blue-500/10 hover:text-blue-500`}
                 title="Zoom In"
               >
                 <PlusIcon size={18} />
               </button>
-              <button 
+              <button
                 onClick={handleZoomOut}
                 className={`p-2 rounded-xl transition-all hover:bg-blue-500/10 hover:text-blue-500`}
                 title="Zoom Out"
@@ -239,22 +338,30 @@ const App: React.FC = () => {
                 <MinusIcon size={18} />
               </button>
             </div>
-            
+
             {/* Sidebar Toggle Button */}
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
+              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 ${
+                theme === "dark"
+                  ? "bg-slate-800 text-white border border-white/10"
+                  : "bg-white text-slate-900 border border-slate-200"
+              }`}
               title={isSidebarOpen ? t.collapse : t.open}
             >
-              {isSidebarOpen ? <PanelLeftCloseIcon size={20} /> : <PanelLeftOpenIcon size={20} />}
+              {isSidebarOpen ? (
+                <PanelLeftCloseIcon size={20} />
+              ) : (
+                <PanelLeftOpenIcon size={20} />
+              )}
             </button>
           </div>
         </header>
 
         {/* Chart View */}
-        <ConstructionCanvas 
-          curves={displayCurves} 
-          viewBox={DEFAULT_VIEW_BOX} 
+        <ConstructionCanvas
+          curves={displayCurves}
+          viewBox={DEFAULT_VIEW_BOX}
           theme={theme}
           isExporting={isExporting}
           showScalesInExport={activeExportSettings?.showScales}
@@ -266,8 +373,12 @@ const App: React.FC = () => {
           handleSize={appSettings.handleSize}
           curveOpacity={appSettings.curveOpacity}
           language={appSettings.language}
-          showXValues={isExporting ? !!activeExportSettings?.showXValues : showXValues}
-          showYValues={isExporting ? !!activeExportSettings?.showYValues : showYValues}
+          showXValues={
+            isExporting ? !!activeExportSettings?.showXValues : showXValues
+          }
+          showYValues={
+            isExporting ? !!activeExportSettings?.showYValues : showYValues
+          }
           showGrid={isExporting ? !!activeExportSettings?.showGrid : showGrid}
           showAxes={isExporting ? !!activeExportSettings?.showAxes : showAxes}
         />
@@ -276,40 +387,72 @@ const App: React.FC = () => {
         {!isExporting && (
           <div className="absolute bottom-12 left-4 md:bottom-16 md:left-10 flex flex-wrap gap-x-6 gap-y-2 z-20">
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showGrid} 
+              <input
+                type="checkbox"
+                checked={showGrid}
                 onChange={() => setShowGrid(!showGrid)}
                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
               />
-              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showGrid}</span>
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
+                  theme === "dark"
+                    ? "text-white/60 group-hover:text-white"
+                    : "text-slate-900/60 group-hover:text-slate-900"
+                }`}
+              >
+                {t.showGrid}
+              </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showAxes} 
+              <input
+                type="checkbox"
+                checked={showAxes}
                 onChange={() => setShowAxes(!showAxes)}
                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
               />
-              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showAxes}</span>
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
+                  theme === "dark"
+                    ? "text-white/60 group-hover:text-white"
+                    : "text-slate-900/60 group-hover:text-slate-900"
+                }`}
+              >
+                {t.showAxes}
+              </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showXValues} 
+              <input
+                type="checkbox"
+                checked={showXValues}
                 onChange={() => setShowXValues(!showXValues)}
                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
               />
-              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showXValues}</span>
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
+                  theme === "dark"
+                    ? "text-white/60 group-hover:text-white"
+                    : "text-slate-900/60 group-hover:text-slate-900"
+                }`}
+              >
+                {t.showXValues}
+              </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showYValues} 
+              <input
+                type="checkbox"
+                checked={showYValues}
                 onChange={() => setShowYValues(!showYValues)}
                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
               />
-              <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${theme === 'dark' ? 'text-white/60 group-hover:text-white' : 'text-slate-900/60 group-hover:text-slate-900'}`}>{t.showYValues}</span>
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
+                  theme === "dark"
+                    ? "text-white/60 group-hover:text-white"
+                    : "text-slate-900/60 group-hover:text-slate-900"
+                }`}
+              >
+                {t.showYValues}
+              </span>
             </label>
           </div>
         )}
@@ -317,21 +460,33 @@ const App: React.FC = () => {
         {/* Legend Overlay */}
         {!isExporting && (
           <div className="absolute bottom-24 md:bottom-28 left-8 md:left-14 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
-            {curves.filter(c => c.isVisible).map(c => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]" style={{ backgroundColor: c.color }} />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-tighter opacity-40 leading-none mb-1 truncate">{c.name}</span>
-                  <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}</span>
+            {curves
+              .filter((c) => c.isVisible)
+              .map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden"
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[9px] font-black uppercase tracking-tighter opacity-40 leading-none mb-1 truncate">
+                      {c.name}
+                    </span>
+                    <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                      μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </main>
 
-      <Sidebar 
-        curves={curves} 
+      <Sidebar
+        curves={curves}
         theme={theme}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -349,7 +504,9 @@ const App: React.FC = () => {
             showAxes: showAxes,
             showXValues: showXValues,
             showYValues: showYValues,
-            selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
+            selectedCurveIds: curves
+              .filter((c) => c.isVisible)
+              .map((c) => c.id),
           });
           setIsExportModalOpen(true);
         }}
@@ -367,7 +524,7 @@ const App: React.FC = () => {
         language={appSettings.language}
       />
 
-      <SettingsModal 
+      <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         settings={appSettings}

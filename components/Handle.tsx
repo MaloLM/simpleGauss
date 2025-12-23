@@ -25,7 +25,7 @@ const Handle: React.FC<HandleProps> = ({
 }) => {
   return (
     <g 
-      className="group cursor-pointer select-none" 
+      className="group cursor-pointer select-none handle-group" 
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
