@@ -18,6 +18,7 @@ import {
   RefreshCcwIcon,
   PlusIcon,
   MinusIcon,
+  CameraIcon,
 } from "lucide-react";
 
 const App: React.FC = () => {
@@ -88,6 +89,21 @@ const App: React.FC = () => {
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev * 1.2, 50));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev / 1.2, 0.1));
+
+  const handleOpenExport = useCallback(() => {
+    setActiveExportSettings({
+      showTitle: true,
+      title: title,
+      showLegend: true,
+      showScales: true,
+      showGrid: showGrid,
+      showAxes: showAxes,
+      showXValues: showXValues,
+      showYValues: showYValues,
+      selectedCurveIds: curves.filter((c) => c.isVisible).map((c) => c.id),
+    });
+    setIsExportModalOpen(true);
+  }, [title, showGrid, showAxes, showXValues, showYValues, curves]);
 
   useEffect(() => {
     if (!isExporting || !activeExportSettings) return;
@@ -315,6 +331,19 @@ const App: React.FC = () => {
               </span>
             </button>
 
+            {/* Screenshot Shortcut Button */}
+            <button
+              onClick={handleOpenExport}
+              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
+                theme === "dark"
+                  ? "bg-slate-800 text-white border border-white/10"
+                  : "bg-white text-slate-900 border border-slate-200"
+              }`}
+              title={t.screenshot}
+            >
+              <CameraIcon size={18} />
+            </button>
+
             {/* Zoom Buttons Group (NEW) */}
             <div
               className={`flex gap-1 p-1 rounded-2xl ${
@@ -494,22 +523,7 @@ const App: React.FC = () => {
         onDeleteCurve={deleteCurve}
         onUpdateCurve={updateCurve}
         onSettingsToggle={() => setIsSettingsModalOpen(true)}
-        onExport={() => {
-          setActiveExportSettings({
-            showTitle: true,
-            title: title,
-            showLegend: true,
-            showScales: true,
-            showGrid: showGrid,
-            showAxes: showAxes,
-            showXValues: showXValues,
-            showYValues: showYValues,
-            selectedCurveIds: curves
-              .filter((c) => c.isVisible)
-              .map((c) => c.id),
-          });
-          setIsExportModalOpen(true);
-        }}
+        onExport={handleOpenExport}
         language={appSettings.language}
       />
 
