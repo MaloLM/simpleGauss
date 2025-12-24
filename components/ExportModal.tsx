@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GaussianCurve, Theme, ExportSettings, Language } from '../types';
 import { translations } from '../translations';
-import { XIcon, CheckCircle2Icon, CircleIcon } from 'lucide-react';
+import { XIcon, CheckCircle2Icon, CircleIcon, PaletteIcon } from 'lucide-react';
+import { HexColorPicker } from 'react-colorful';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -37,13 +38,32 @@ const ExportModal: React.FC<ExportModalProps> = ({
     showXValues: true,
     showYValues: true,
     selectedCurveIds: curves.filter(c => c.isVisible).map(c => c.id),
+    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
   });
+
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && initialSettings) {
       setSettings(initialSettings);
     }
   }, [isOpen, initialSettings]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
+        setShowColorPicker(false);
+      }
+    };
+
+    if (showColorPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColorPicker]);
 
   if (!isOpen) return null;
 
@@ -141,6 +161,69 @@ const ExportModal: React.FC<ExportModalProps> = ({
               <span className="text-[10px] font-bold uppercase tracking-wider">{t.showYValues}</span>
               {settings.showYValues ? <CheckCircle2Icon size={16} /> : <CircleIcon size={16} />}
             </button>
+          </section>
+
+          {/* Background Color Selection */}
+          <section className="space-y-4">
+            <label className="text-xs font-black uppercase tracking-widest text-blue-500">{t.backgroundColor}</label>
+            <div className="relative" ref={colorPickerRef}>
+              {showColorPicker && (
+                <div className="absolute z-50 bottom-full mb-4 p-4 rounded-3xl shadow-2xl border animate-in fade-in slide-in-from-bottom-2 duration-200 bg-slate-900 border-white/10 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0">
+                  <HexColorPicker 
+                    color={settings.backgroundColor} 
+                    onChange={(color) => setSettings(s => ({ ...s, backgroundColor: color }))} 
+                  />
+                  <div className="mt-4 flex gap-2">
+                    <input 
+                      type="text"
+                      value={settings.backgroundColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9A-F]{0,6}$/i.test(val)) {
+                          setSettings(s => ({ ...s, backgroundColor: val }));
+                        }
+                      }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold mono uppercase outline-none focus:border-blue-500 transition-colors"
+                    />
+                    <button 
+                      onClick={() => setShowColorPicker(false)}
+                      className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                <button
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className="w-10 h-10 rounded-xl shadow-inner border border-white/10 shrink-0 transition-transform hover:scale-105 active:scale-95"
+                  style={{ backgroundColor: settings.backgroundColor }}
+                />
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="text-xs opacity-40 font-black">#</span>
+                  <input 
+                    type="text"
+                    value={settings.backgroundColor.replace('#', '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^[0-9A-F]{0,6}$/i.test(val)) {
+                        setSettings(s => ({ ...s, backgroundColor: `#${val}` }));
+                      }
+                    }}
+                    className="w-full bg-transparent text-sm font-bold mono uppercase outline-none focus:text-blue-500 transition-colors"
+                    placeholder="FFFFFF"
+                  />
+                </div>
+                <button 
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className={`p-2 rounded-lg transition-colors ${showColorPicker ? 'bg-blue-500/20 text-blue-500' : 'hover:bg-white/5 opacity-40'}`}
+                >
+                  <PaletteIcon size={18} />
+                </button>
+              </div>
+            </div>
           </section>
 
           {/* Curve Selection */}

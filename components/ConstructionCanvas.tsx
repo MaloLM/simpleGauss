@@ -51,6 +51,8 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
   const [hoveredPeakId, setHoveredPeakId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+  const [lastTouchPos, setLastTouchPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -251,16 +253,92 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
     };
   }, [drag, isPanning, curves, mathWidth, mathHeight, xMin, yMin, onUpdateCurve, onPan]);
 
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        // Pinch to zoom
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+
+        if (lastTouchDistance !== null) {
+          const delta = dist / lastTouchDistance;
+          onZoom(prev => Math.min(Math.max(prev * delta, 0.1), 50));
+        }
+        setLastTouchDistance(dist);
+      } else if (e.touches.length === 1) {
+
+        const touch = e.touches[0];
+        const rawX = touch.clientX - rect.left;
+        const rawY = touch.clientY - rect.top;
+        const svgX = (rawX / rect.width) * mathWidth + xMin;
+        const svgY = (1 - rawY / rect.height) * mathHeight + yMin;
+
+        if (drag) {
+          const curve = curves.find(c => c.id === drag.curveId);
+          if (!curve) return;
+
+          if (drag.type === 'mean-amplitude') {
+            onUpdateCurve(curve.id, { mean: svgX, amplitude: Math.max(0.01, svgY) });
+          } else if (drag.type === 'sigma') {
+            onUpdateCurve(curve.id, { sigma: Math.max(0.05, Math.abs(svgX - curve.mean)) });
+          }
+        } else if (isPanning && lastTouchPos) {
+          const dxMath = ((touch.clientX - lastTouchPos.x) / rect.width) * mathWidth;
+          const dyMath = ((touch.clientY - lastTouchPos.y) / rect.height) * mathHeight;
+          onPan(prev => ({ x: prev.x - dxMath, y: prev.y + dyMath }));
+        }
+        setLastTouchPos({ x: touch.clientX, y: touch.clientY });
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setDrag(null);
+      setIsPanning(false);
+      setLastTouchDistance(null);
+      setLastTouchPos(null);
+    };
+
+    if (drag || isPanning || lastTouchDistance !== null) {
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener('touchcancel', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [drag, isPanning, lastTouchDistance, lastTouchPos, curves, mathWidth, mathHeight, xMin, yMin, onUpdateCurve, onPan, onZoom]);
+
   const handleBgMouseDown = (e: React.MouseEvent) => {
-    // Allow panning if clicking on the SVG background, grid lines, axes, or the curves themselves.
-    // Handles have their own onMouseDown with stopPropagation, so they won't trigger this.
     const target = e.target as SVGElement;
     const isHandle = target.closest('.handle-group');
-    
+    if (!isHandle) setIsPanning(true);
+  };
+
+  const handleBgTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as SVGElement;
+    const isHandle = target.closest('.handle-group');
     if (!isHandle) {
-      setIsPanning(true);
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        setLastTouchDistance(dist);
+      } else if (e.touches.length === 1) {
+        setIsPanning(true);
+        setLastTouchPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      }
     }
   };
+
 
   return (
     <div 
@@ -271,7 +349,9 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
       <div 
         className={`relative w-full h-full shadow-2xl rounded-3xl overflow-hidden ${isExporting ? '' : 'bg-white/5 backdrop-blur-sm border border-white/10'} ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         onMouseDown={handleBgMouseDown}
+        onTouchStart={handleBgTouchStart}
       >
+
         <svg
           ref={svgRef}
           id="main-canvas-svg"
@@ -351,6 +431,11 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                         isActive={isActive}
                         size={handleSize / zoom}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'mean-amplitude' }); }}
+                        onTouchStart={(e) => { 
+                          if (e.cancelable) e.preventDefault();
+                          e.stopPropagation(); 
+                          setDrag({ curveId: curve.id, type: 'mean-amplitude' }); 
+                        }}
                         onMouseEnter={() => setHoveredPeakId(curve.id)}
                         onMouseLeave={() => setHoveredPeakId(null)}
                       />
@@ -362,6 +447,11 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                         isActive={drag?.curveId === curve.id && drag?.type === 'sigma'}
                         size={handleSize / zoom}
                         onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'sigma' }); }}
+                        onTouchStart={(e) => { 
+                          if (e.cancelable) e.preventDefault();
+                          e.stopPropagation(); 
+                          setDrag({ curveId: curve.id, type: 'sigma' }); 
+                        }}
                       />
                     </>
                   )}

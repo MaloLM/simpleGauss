@@ -44,8 +44,11 @@ export const translations = {
     showXValues: "Show X values",
     showYValues: "Show Y values",
     showGrid: "Show Grid",
-    showAxes: "Show Axes"
+    showAxes: "Show Axes",
+    backgroundColor: "Background Color",
+    mobilePrevention: "This application is designed for desktop use. Please use a larger screen to access the distribution model."
   },
+
   fr: {
     appSubtitle: "Moteur de Distribution Gaussienne",
     reset: "Réinitialiser",
@@ -89,6 +92,8 @@ export const translations = {
     showXValues: "Afficher les valeurs X",
     showYValues: "Afficher les valeurs Y",
     showGrid: "Afficher la grille",
-    showAxes: "Afficher les axes"
+    showAxes: "Afficher les axes",
+    backgroundColor: "Couleur du fond",
+    mobilePrevention: "Cette application est conçue pour une utilisation sur ordinateur. Veuillez utiliser un écran plus large pour accéder au moteur de distribution."
   }
 };

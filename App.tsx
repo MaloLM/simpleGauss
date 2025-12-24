@@ -11,6 +11,7 @@ import ConstructionCanvas from "./components/ConstructionCanvas";
 import Sidebar from "./components/Sidebar";
 import ExportModal from "./components/ExportModal";
 import SettingsModal from "./components/SettingsModal";
+import MobilePrevention from "./components/MobilePrevention";
 import { translations } from "./translations";
 import {
   PanelLeftOpenIcon,
@@ -36,6 +37,7 @@ const App: React.FC = () => {
   const [showYValues, setShowYValues] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [appSettings, setAppSettings] = useState<AppSettings>({
     theme: "dark",
@@ -48,6 +50,15 @@ const App: React.FC = () => {
 
   const updateAppSettings = useCallback((updates: Partial<AppSettings>) => {
     setAppSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   const addCurve = useCallback(() => {
@@ -101,6 +112,7 @@ const App: React.FC = () => {
       showXValues: showXValues,
       showYValues: showYValues,
       selectedCurveIds: curves.filter((c) => c.isVisible).map((c) => c.id),
+      backgroundColor: appSettings.theme === "dark" ? "#0f172a" : "#f8fafc",
     });
     setIsExportModalOpen(true);
   }, [title, showGrid, showAxes, showXValues, showYValues, curves]);
@@ -156,7 +168,7 @@ const App: React.FC = () => {
         if (ctx) {
           // Small delay to ensure image is fully ready for drawing
           const isDark = appSettings.theme === "dark";
-          const bgColor = isDark ? "#0f172a" : "#f8fafc";
+          const bgColor = activeExportSettings.backgroundColor;
           const primaryTextColor = isDark ? "#ffffff" : "#0f172a";
           const secondaryTextColor = isDark
             ? "rgba(255, 255, 255, 0.5)"
@@ -225,6 +237,7 @@ const App: React.FC = () => {
               ctx.fill();
 
               ctx.beginPath();
+
               ctx.arc(
                 legendX + 8 * scale,
                 legendY - 10 * scale,
@@ -296,7 +309,14 @@ const App: React.FC = () => {
           : "bg-slate-50 text-slate-900"
       }`}
     >
+      {isMobile && (
+        <MobilePrevention
+          language={appSettings.language}
+          theme={appSettings.theme}
+        />
+      )}
       <main className="relative flex-1 flex flex-col overflow-hidden h-full">
+
         {/* Header Overlay */}
         <header className="absolute top-0 left-0 w-full p-8 md:p-12 z-10 pointer-events-none flex justify-between items-start">
           <div className="flex flex-col gap-1 pointer-events-auto max-w-lg">

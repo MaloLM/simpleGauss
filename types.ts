@@ -36,6 +36,7 @@ export interface ExportSettings {
   showXValues: boolean;
   showYValues: boolean;
   selectedCurveIds: string[];
+  backgroundColor: string;
 }
 
 export interface AppSettings {
