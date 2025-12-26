@@ -64,11 +64,13 @@ const App: React.FC = () => {
   }, []);
 
   const addCurve = useCallback((type: CurveKind) => {
-    if (curves.length >= 15) return;
+    if (curves.length >= 12) return;
     const newId = Math.random().toString(36).substr(2, 9);
     
     let newCurve: AnyCurve;
     
+    const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
     if (type === 'gaussian') {
       newCurve = {
         id: newId,
@@ -80,7 +82,7 @@ const App: React.FC = () => {
         mean: (Math.random() - 0.5) * 6 + panOffset.x,
         sigma: 0.8 + Math.random() * 0.4,
         amplitude: 0.6 + Math.random() * 0.4,
-        color: COLORS[curves.length % COLORS.length],
+        color: randomColor,
         isVisible: true,
         isLocked: false,
       };
@@ -94,7 +96,7 @@ const App: React.FC = () => {
             : `Courbe ${curves.length + 1}`,
         slope: 0.5,
         intercept: 1,
-        color: COLORS[curves.length % COLORS.length],
+        color: randomColor,
         isVisible: true,
         isLocked: false,
       };
@@ -109,7 +111,23 @@ const App: React.FC = () => {
         a: 0.5,
         h: panOffset.x,
         k: 1 + panOffset.y,
-        color: COLORS[curves.length % COLORS.length],
+        color: randomColor,
+        isVisible: true,
+        isLocked: false,
+      };
+    } else if (type === 'powerLaw') {
+      newCurve = {
+        id: newId,
+        type: 'powerLaw',
+        name:
+          appSettings.language === "en"
+            ? `Curve ${curves.length + 1}`
+            : `Courbe ${curves.length + 1}`,
+        a: 1,
+        b: -1,
+        h: panOffset.x,
+        k: panOffset.y,
+        color: randomColor,
         isVisible: true,
         isLocked: false,
       };
@@ -122,6 +140,19 @@ const App: React.FC = () => {
 
   const deleteCurve = useCallback((id: string) => {
     setCurves((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const clearAllCurves = useCallback(() => {
+    setCurves([]);
+  }, []);
+
+  const reorderCurves = useCallback((startIndex: number, endIndex: number) => {
+    setCurves((prev) => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      return result;
+    });
   }, []);
 
   const updateCurve = useCallback(
@@ -313,6 +344,12 @@ const App: React.FC = () => {
               } else if (curve.type === 'quadratic') {
                 ctx.fillText(
                   `a:${curve.a.toFixed(1)} h:${curve.h.toFixed(1)} k:${curve.k.toFixed(1)}`,
+                  legendX + 24 * scale,
+                  legendY - 8 * scale
+                );
+              } else if (curve.type === 'powerLaw') {
+                ctx.fillText(
+                  `a:${curve.a.toFixed(1)} b:${curve.b.toFixed(1)} h:${curve.h.toFixed(1)} k:${curve.k.toFixed(1)}`,
                   legendX + 24 * scale,
                   legendY - 8 * scale
                 );
@@ -593,6 +630,11 @@ const App: React.FC = () => {
                         a:{c.a.toFixed(1)} h:{c.h.toFixed(1)} k:{c.k.toFixed(1)}
                       </span>
                     )}
+                    {c.type === 'powerLaw' && (
+                      <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                        a:{c.a.toFixed(1)} b:{c.b.toFixed(1)} h:{c.h.toFixed(1)} k:{c.k.toFixed(1)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -607,6 +649,8 @@ const App: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
         onAddCurve={addCurve}
         onDeleteCurve={deleteCurve}
+        onClearAll={clearAllCurves}
+        onReorder={reorderCurves}
         onUpdateCurve={updateCurve}
         onSettingsToggle={() => setIsSettingsModalOpen(true)}
         onExport={handleOpenExport}

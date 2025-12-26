@@ -33,6 +33,41 @@ export const generateGaussianPath = (
 };
 
 /**
+ * Calculates the y-value of a power law curve at point x.
+ * f(x) = a * |x - h|^b + k
+ */
+export const calculatePowerLaw = (x: number, a: number, b: number, h: number, k: number): number => {
+  const dx = Math.abs(x - h);
+  if (dx === 0 && b < 0) return 1000; // Avoid infinity
+  return a * Math.pow(dx, b) + k;
+};
+
+/**
+ * Generates a path string for an SVG polyline/path representing the power law curve.
+ */
+export const generatePowerLawPath = (
+  a: number,
+  b: number,
+  h: number,
+  k: number,
+  xMin: number,
+  xMax: number,
+  resolution: number = 200
+): string => {
+  const points: [number, number][] = [];
+  const step = (xMax - xMin) / resolution;
+  
+  for (let x = xMin; x <= xMax; x += step) {
+    const y = calculatePowerLaw(x, a, b, h, k);
+    // Clamp y to avoid SVG rendering issues with extreme values
+    const clampedY = Math.max(-100, Math.min(100, y));
+    points.push([x, clampedY]);
+  }
+  
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+};
+
+/**
  * Calculates the y-value of a linear curve at point x.
  * f(x) = a * x + b
  */

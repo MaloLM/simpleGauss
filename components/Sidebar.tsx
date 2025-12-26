@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { AnyCurve, Theme, Language, CurveKind } from '../types';
 import { COLORS } from '../constants';
@@ -13,8 +12,11 @@ import {
   DownloadIcon,
   SettingsIcon,
   PanelLeftCloseIcon,
-  InfoIcon
+  InfoIcon,
+  ChevronDownIcon,
+  GripVerticalIcon
 } from 'lucide-react';
+import { HexColorPicker } from 'react-colorful';
 
 interface SidebarProps {
   curves: AnyCurve[];
@@ -23,6 +25,8 @@ interface SidebarProps {
   onClose: () => void;
   onAddCurve: (type: CurveKind) => void;
   onDeleteCurve: (id: string) => void;
+  onClearAll: () => void;
+  onReorder: (startIndex: number, endIndex: number) => void;
   onUpdateCurve: (id: string, updates: Partial<AnyCurve>) => void;
   onSettingsToggle: () => void;
   onExport: () => void;
@@ -43,8 +47,6 @@ const NumericInput = ({
   const [localValue, setLocalValue] = useState(value.toString());
 
   useEffect(() => {
-    // Only update local value if it's not currently being edited 
-    // or if the external value changed significantly
     if (parseFloat(localValue) !== value) {
       setLocalValue(value.toString());
     }
@@ -63,7 +65,6 @@ const NumericInput = ({
         }
       }}
       onBlur={() => {
-        // On blur, reset to the actual value to clean up any invalid strings
         setLocalValue(value.toString());
       }}
       className={className}
@@ -78,6 +79,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   onAddCurve, 
   onDeleteCurve, 
+  onClearAll,
+  onReorder,
   onUpdateCurve,
   onSettingsToggle,
   onExport,
@@ -87,12 +90,21 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isDark = theme === 'dark';
   const isLimitReached = curves.length >= 12;
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [activeColorPickerId, setActiveColorPickerId] = useState<string | null>(null);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsAddDropdownOpen(false);
+      }
+      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
+        setActiveColorPickerId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -109,10 +121,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           : 'bg-white border-slate-200 text-slate-900 shadow-2xl shadow-slate-200'
       }`}
     >
-      {/* 
-          Inner container with fixed width (w-80 = 320px) to prevent 
-          content from squishing/reflowing during the width transition.
-      */}
       <div className={`w-80 p-6 transition-opacity duration-300 ${isOpen ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -150,15 +158,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">{t.constructionSet}</h3>
-              <span className={`text-[10px] opacity-40 font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {t.activeCount(curves.length)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] opacity-40 font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {t.activeCount(curves.length)}
+                </span>
+                {curves.length > 0 && (
+                  <button
+                    onClick={() => setIsConfirmClearOpen(true)}
+                    className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${isDark ? 'text-red-400/60 hover:text-red-400' : 'text-red-500/60 hover:text-red-500'}`}
+                  >
+                    {t.clearAll}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
                 disabled={isLimitReached}
-                className={`flex items-center gap-1 px-3 py-1.5 text-white text-[10px] font-black uppercase tracking-wider rounded-full transition-all shadow-lg active:scale-90 ${
+                className={`flex items-center gap-2 px-4 py-2 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-95 border border-white/10 ${
                   isLimitReached 
                     ? 'bg-slate-700 cursor-not-allowed opacity-50 shadow-none' 
                     : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
@@ -167,6 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <PlusIcon size={12} strokeWidth={4} />
                 <span>{t.new}</span>
+                <ChevronDownIcon size={12} className={`transition-transform duration-200 ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isAddDropdownOpen && (
@@ -184,30 +203,41 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     {t.gaussian}
                   </button>
-                    <button
-                      onClick={() => {
-                        onAddCurve('linear');
-                        setIsAddDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {t.linear}
-                    </button>
-                    <button
-                      onClick={() => {
-                        onAddCurve('quadratic');
-                        setIsAddDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {t.quadratic}
-                    </button>
-                  </div>
-                )}
+                  <button
+                    onClick={() => {
+                      onAddCurve('linear');
+                      setIsAddDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {t.linear}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onAddCurve('quadratic');
+                      setIsAddDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {t.quadratic}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onAddCurve('powerLaw');
+                      setIsAddDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {t.powerLaw}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -219,15 +249,57 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
 
           <div className="space-y-4">
-            {curves.map(curve => (
-              <div key={curve.id} className={`group p-4 rounded-2xl border transition-all ${isDark ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <input
-                    type="text"
-                    value={curve.name}
-                    onChange={(e) => onUpdateCurve(curve.id, { name: e.target.value })}
-                    className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0 outline-none"
+            {curves.map((curve, index) => (
+              <div 
+                key={curve.id} 
+                draggable
+                onDragStart={(e) => {
+                  setDraggedIndex(index);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (draggedIndex !== null && draggedIndex !== index) {
+                    setDragOverIndex(index);
+                  }
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedIndex !== null && draggedIndex !== index) {
+                    onReorder(draggedIndex, index);
+                  }
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`group p-4 rounded-2xl border transition-all relative ${
+                  draggedIndex === index ? 'opacity-20' : 'opacity-100'
+                } ${isDark ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}
+              >
+                {/* Visual Indicator Line */}
+                {dragOverIndex === index && draggedIndex !== null && draggedIndex !== index && (
+                  <div 
+                    className={`absolute left-0 right-0 h-0.5 bg-blue-500 z-50 pointer-events-none ${
+                      draggedIndex < index ? 'bottom-[-9px]' : 'top-[-9px]'
+                    }`} 
                   />
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className={`cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-40 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      <GripVerticalIcon size={14} />
+                    </div>
+                    <input
+                      type="text"
+                      value={curve.name}
+                      onChange={(e) => onUpdateCurve(curve.id, { name: e.target.value })}
+                      className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0 outline-none"
+                    />
+                  </div>
                   <div className="flex gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={() => onUpdateCurve(curve.id, { isVisible: !curve.isVisible })} 
@@ -341,21 +413,88 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </>
                 )}
 
-                <div className="flex justify-end">
-                  <div className="flex flex-wrap gap-1 max-w-[60px] justify-end">
-                    {COLORS.slice(0, 6).map(color => (
-                      <button
-                        key={color}
-                        onClick={() => onUpdateCurve(curve.id, { color })}
-                        className={`w-3 h-3 rounded-full transition-all active:scale-75 ${
-                          curve.color === color 
-                            ? 'ring-2 ring-blue-500 ring-offset-2 ' + (isDark ? 'ring-offset-slate-900' : 'ring-offset-white') 
-                            : 'hover:scale-125'
-                        }`}
-                        style={{ backgroundColor: color }}
+                {curve.type === 'powerLaw' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.coefficient} (a)</label>
+                        <NumericInput
+                          value={curve.a}
+                          onChange={(val) => onUpdateCurve(curve.id, { a: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.exponent} (b)</label>
+                        <NumericInput
+                          value={curve.b}
+                          onChange={(val) => onUpdateCurve(curve.id, { b: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexX} (h)</label>
+                        <NumericInput
+                          value={curve.h}
+                          onChange={(val) => onUpdateCurve(curve.id, { h: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexY} (k)</label>
+                        <NumericInput
+                          value={curve.k}
+                          onChange={(val) => onUpdateCurve(curve.id, { k: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-end relative" ref={activeColorPickerId === curve.id ? colorPickerRef : null}>
+                  {activeColorPickerId === curve.id && (
+                    <div className={`absolute z-[60] bottom-full right-0 mb-4 p-4 rounded-3xl shadow-2xl border animate-in fade-in slide-in-from-bottom-2 duration-200 ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                      <HexColorPicker 
+                        color={curve.color} 
+                        onChange={(color) => onUpdateCurve(curve.id, { color })} 
                       />
-                    ))}
-                  </div>
+                      <div className="mt-4 flex gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors bg-white/5 border-white/10">
+                          <span className="text-[10px] opacity-40 font-black">#</span>
+                          <input 
+                            type="text"
+                            value={curve.color.replace('#', '')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (/^[0-9A-F]{0,6}$/i.test(val)) {
+                                onUpdateCurve(curve.id, { color: `#${val}` });
+                              }
+                            }}
+                            className="w-full bg-transparent text-xs font-bold mono uppercase outline-none focus:text-blue-500 transition-colors"
+                            placeholder="FFFFFF"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => setActiveColorPickerId(null)}
+                          className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors text-white"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={() => setActiveColorPickerId(activeColorPickerId === curve.id ? null : curve.id)}
+                    className={`w-12 h-6 rounded-lg shadow-inner border transition-all hover:scale-105 active:scale-95 ${
+                      isDark ? 'border-white/10' : 'border-slate-200'
+                    } ${activeColorPickerId === curve.id ? 'ring-2 ring-blue-500 ring-offset-2 ' + (isDark ? 'ring-offset-slate-900' : 'ring-offset-white') : ''}`}
+                    style={{ backgroundColor: curve.color }}
+                    title="Change Color"
+                  />
                 </div>
               </div>
             ))}
@@ -380,6 +519,34 @@ const Sidebar: React.FC<SidebarProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Confirm Clear Modal */}
+      {isConfirmClearOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsConfirmClearOpen(false)} />
+          <div className={`relative w-full max-w-xs p-6 rounded-3xl shadow-2xl border animate-in zoom-in-95 duration-200 ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+            <h3 className="text-sm font-black uppercase tracking-widest mb-2">{t.clearAll}</h3>
+            <p className="text-xs opacity-60 mb-6">{t.confirmClear}</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsConfirmClearOpen(false)}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}
+              >
+                {t.cancel}
+              </button>
+              <button 
+                onClick={() => {
+                  onClearAll();
+                  setIsConfirmClearOpen(false);
+                }}
+                className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                {t.reset}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

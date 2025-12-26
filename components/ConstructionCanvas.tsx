@@ -1,7 +1,7 @@
 
 import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { AnyCurve, ViewBox, DragState, Theme, Language } from '../types';
-import { generateGaussianPath, calculateGaussian, generateLinearPath, calculateLinear, generateQuadraticPath, calculateQuadratic } from '../services/mathUtils';
+import { generateGaussianPath, calculateGaussian, generateLinearPath, calculateLinear, generateQuadraticPath, calculateQuadratic, generatePowerLawPath, calculatePowerLaw } from '../services/mathUtils';
 import { translations } from '../translations';
 import Handle from './Handle';
 
@@ -244,6 +244,19 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
             const dx = 1;
             onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, 2) });
           }
+        } else if (curve.type === 'powerLaw') {
+          if (drag.handleId === 'vertex') {
+            onUpdateCurve(curve.id, { h: svgX });
+          } else if (drag.handleId === 'coefficient') {
+            const dx = 1;
+            onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, curve.b) });
+          } else if (drag.handleId === 'exponent') {
+            const dx = 2;
+            const dy = svgY - curve.k;
+            if (dy / curve.a > 0) {
+              onUpdateCurve(curve.id, { b: Math.log(dy / curve.a) / Math.log(dx) });
+            }
+          }
         }
       } else if (isPanning) {
         onPan(prev => ({
@@ -313,6 +326,19 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
             } else if (drag.handleId === 'curvature') {
               const dx = 1;
               onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, 2) });
+            }
+          } else if (curve.type === 'powerLaw') {
+            if (drag.handleId === 'vertex') {
+              onUpdateCurve(curve.id, { h: svgX });
+            } else if (drag.handleId === 'coefficient') {
+              const dx = 1;
+              onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, curve.b) });
+            } else if (drag.handleId === 'exponent') {
+              const dx = 2;
+              const dy = svgY - curve.k;
+              if (dy / curve.a > 0) {
+                onUpdateCurve(curve.id, { b: Math.log(dy / curve.a) / Math.log(dx) });
+              }
             }
           }
         } else if (isPanning && lastTouchPos) {
@@ -412,7 +438,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
             
             {labels}
 
-            {curves.filter(c => c.isVisible).map(curve => {
+            {[...curves].reverse().filter(c => c.isVisible).map(curve => {
               if (curve.type === 'gaussian') {
                 const path = generateGaussianPath(curve.mean, curve.sigma, curve.amplitude, xMin, xMax, 250);
                 const sideHandleX = curve.mean + curve.sigma;
@@ -620,6 +646,100 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                             if (e.cancelable) e.preventDefault();
                             e.stopPropagation(); 
                             setDrag({ curveId: curve.id, handleId: 'curvature' }); 
+                          }}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              } else if (curve.type === 'powerLaw') {
+                const path = generatePowerLawPath(curve.a, curve.b, curve.h, curve.k, xMin, xMax, 250);
+                const vertexHandleX = curve.h;
+                const vertexHandleY = curve.k;
+                const coefficientHandleX = curve.h + 1;
+                const coefficientHandleY = calculatePowerLaw(coefficientHandleX, curve.a, curve.b, curve.h, curve.k);
+                const exponentHandleX = curve.h + 2;
+                const exponentHandleY = calculatePowerLaw(exponentHandleX, curve.a, curve.b, curve.h, curve.k);
+                
+                const isVertexActive = drag?.curveId === curve.id && drag.handleId === 'vertex';
+                const isCoefficientActive = drag?.curveId === curve.id && drag.handleId === 'coefficient';
+                const isExponentActive = drag?.curveId === curve.id && drag.handleId === 'exponent';
+                const isHovered = hoveredPeakId === curve.id;
+
+                return (
+                  <g key={curve.id}>
+                    <path
+                      d={`${path} L ${xMax} 0 L ${xMin} 0 Z`}
+                      fill={curve.color}
+                      fillOpacity={curveOpacity}
+                    />
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={curve.color}
+                      strokeWidth={isExporting ? 0.04 / zoom : "3"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
+                    />
+                    
+                    {!curve.isLocked && !isExporting && (
+                      <>
+                        {(isVertexActive || isCoefficientActive || isExponentActive || isHovered) && (
+                          <g transform={`translate(${curve.h}, ${curve.k + (0.4 / zoom)}) scale(1, -1)`}>
+                            <text 
+                              fontSize={0.25 / zoom} 
+                              textAnchor="middle" 
+                              fill={theme === 'dark' ? 'white' : 'black'}
+                              className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
+                            >
+                              {curve.name}
+                            </text>
+                          </g>
+                        )}
+
+                        <Handle
+                          x={vertexHandleX}
+                          y={vertexHandleY}
+                          cursor="ew-resize"
+                          color={curve.color}
+                          isActive={isVertexActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'vertex' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'vertex' }); 
+                          }}
+                          onMouseEnter={() => setHoveredPeakId(curve.id)}
+                          onMouseLeave={() => setHoveredPeakId(null)}
+                        />
+                        <Handle
+                          x={coefficientHandleX}
+                          y={coefficientHandleY}
+                          cursor="ns-resize"
+                          color={curve.color}
+                          isActive={isCoefficientActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'coefficient' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'coefficient' }); 
+                          }}
+                        />
+                        <Handle
+                          x={exponentHandleX}
+                          y={exponentHandleY}
+                          cursor="ns-resize"
+                          color={curve.color}
+                          isActive={isExponentActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'exponent' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'exponent' }); 
                           }}
                         />
                       </>
