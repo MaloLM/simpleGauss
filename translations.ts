@@ -46,7 +46,15 @@ export const translations = {
     showGrid: "Show Grid",
     showAxes: "Show Axes",
     backgroundColor: "Background Color",
-    mobilePrevention: "This application is designed for desktop use. Please use a larger screen to access the distribution model."
+    gaussian: "Gaussian",
+    linear: "Linear",
+    quadratic: "Quadratic",
+    slope: "Slope",
+    intercept: "Intercept",
+    curvature: "Curvature",
+    vertexX: "Vertex X",
+    vertexY: "Vertex Y",
+    mobilePrevention: "This application is designed for desktop use. Please use a larger screen to access the model."
   },
 
   fr: {
@@ -94,6 +102,14 @@ export const translations = {
     showGrid: "Afficher la grille",
     showAxes: "Afficher les axes",
     backgroundColor: "Couleur du fond",
+    gaussian: "Gaussienne",
+    linear: "Linéaire",
+    quadratic: "Quadratique",
+    slope: "Pente",
+    intercept: "Ordonnée à l'origine",
+    curvature: "Courbure",
+    vertexX: "Sommet X",
+    vertexY: "Sommet Y",
     mobilePrevention: "Cette application est conçue pour une utilisation sur ordinateur. Veuillez utiliser un écran plus large pour accéder au moteur de distribution."
   }
 };

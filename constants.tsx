@@ -19,6 +19,7 @@ export const COLORS = [
 export const INITIAL_CURVES = [
   {
     id: '1',
+    type: 'gaussian' as const,
     name: 'Standard Normal',
     mean: 0,
     sigma: 1,

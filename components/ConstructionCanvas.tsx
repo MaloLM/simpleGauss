@@ -1,17 +1,17 @@
 
 import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
-import { GaussianCurve, ViewBox, DragState, Theme, Language } from '../types';
-import { generateGaussianPath, calculateGaussian } from '../services/mathUtils';
+import { AnyCurve, ViewBox, DragState, Theme, Language } from '../types';
+import { generateGaussianPath, calculateGaussian, generateLinearPath, calculateLinear, generateQuadraticPath, calculateQuadratic } from '../services/mathUtils';
 import { translations } from '../translations';
 import Handle from './Handle';
 
 interface ConstructionCanvasProps {
-  curves: GaussianCurve[];
+  curves: AnyCurve[];
   viewBox: ViewBox;
   theme: Theme;
   isExporting: boolean;
   showScalesInExport?: boolean;
-  onUpdateCurve: (id: string, updates: Partial<GaussianCurve>) => void;
+  onUpdateCurve: (id: string, updates: Partial<AnyCurve>) => void;
   panOffset: { x: number; y: number };
   onPan: (offset: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
   zoom: number;
@@ -221,14 +221,29 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
         const curve = curves.find(c => c.id === drag.curveId);
         if (!curve) return;
 
-        if (drag.type === 'mean-amplitude') {
-          onUpdateCurve(curve.id, { 
-            mean: svgX, 
-            amplitude: Math.max(0.01, svgY) 
-          });
-        } else if (drag.type === 'sigma') {
-          const newSigma = Math.abs(svgX - curve.mean);
-          onUpdateCurve(curve.id, { sigma: Math.max(0.05, newSigma) });
+        if (curve.type === 'gaussian') {
+          if (drag.handleId === 'mean-amplitude') {
+            onUpdateCurve(curve.id, { 
+              mean: svgX, 
+              amplitude: Math.max(0.01, svgY) 
+            });
+          } else if (drag.handleId === 'sigma') {
+            const newSigma = Math.abs(svgX - curve.mean);
+            onUpdateCurve(curve.id, { sigma: Math.max(0.05, newSigma) });
+          }
+        } else if (curve.type === 'linear') {
+          if (drag.handleId === 'intercept') {
+            onUpdateCurve(curve.id, { intercept: svgY });
+          } else if (drag.handleId === 'slope') {
+            onUpdateCurve(curve.id, { slope: svgY - curve.intercept });
+          }
+        } else if (curve.type === 'quadratic') {
+          if (drag.handleId === 'vertex') {
+            onUpdateCurve(curve.id, { h: svgX, k: svgY });
+          } else if (drag.handleId === 'curvature') {
+            const dx = 1;
+            onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, 2) });
+          }
         }
       } else if (isPanning) {
         onPan(prev => ({
@@ -260,7 +275,6 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
 
       if (e.touches.length === 2) {
         e.preventDefault();
-        // Pinch to zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -271,7 +285,6 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
         }
         setLastTouchDistance(dist);
       } else if (e.touches.length === 1) {
-
         const touch = e.touches[0];
         const rawX = touch.clientX - rect.left;
         const rawY = touch.clientY - rect.top;
@@ -282,10 +295,25 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
           const curve = curves.find(c => c.id === drag.curveId);
           if (!curve) return;
 
-          if (drag.type === 'mean-amplitude') {
-            onUpdateCurve(curve.id, { mean: svgX, amplitude: Math.max(0.01, svgY) });
-          } else if (drag.type === 'sigma') {
-            onUpdateCurve(curve.id, { sigma: Math.max(0.05, Math.abs(svgX - curve.mean)) });
+          if (curve.type === 'gaussian') {
+            if (drag.handleId === 'mean-amplitude') {
+              onUpdateCurve(curve.id, { mean: svgX, amplitude: Math.max(0.01, svgY) });
+            } else if (drag.handleId === 'sigma') {
+              onUpdateCurve(curve.id, { sigma: Math.max(0.05, Math.abs(svgX - curve.mean)) });
+            }
+          } else if (curve.type === 'linear') {
+            if (drag.handleId === 'intercept') {
+              onUpdateCurve(curve.id, { intercept: svgY });
+            } else if (drag.handleId === 'slope') {
+              onUpdateCurve(curve.id, { slope: svgY - curve.intercept });
+            }
+          } else if (curve.type === 'quadratic') {
+            if (drag.handleId === 'vertex') {
+              onUpdateCurve(curve.id, { h: svgX, k: svgY });
+            } else if (drag.handleId === 'curvature') {
+              const dx = 1;
+              onUpdateCurve(curve.id, { a: (svgY - curve.k) / Math.pow(dx, 2) });
+            }
           }
         } else if (isPanning && lastTouchPos) {
           const dxMath = ((touch.clientX - lastTouchPos.x) / rect.width) * mathWidth;
@@ -372,7 +400,7 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
                   strokeWidth={isExporting ? 0.028 / zoom : "2"} 
                   style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }} 
                 />
-                {/* Vertical Axis - FIXED: extended y2 to yMax instead of 0 */}
+                {/* Vertical Axis */}
                 <line 
                   x1={0} y1={yMin} x2={0} y2={yMax} 
                   stroke={colors.axis} 
@@ -385,78 +413,221 @@ const ConstructionCanvas: React.FC<ConstructionCanvasProps> = ({
             {labels}
 
             {curves.filter(c => c.isVisible).map(curve => {
-              const path = generateGaussianPath(curve.mean, curve.sigma, curve.amplitude, xMin, xMax, 250);
-              const sideHandleX = curve.mean + curve.sigma;
-              const sideHandleY = calculateGaussian(sideHandleX, curve.mean, curve.sigma, curve.amplitude);
-              const isActive = drag?.curveId === curve.id && drag?.type === 'mean-amplitude';
-              const isHovered = hoveredPeakId === curve.id;
+              if (curve.type === 'gaussian') {
+                const path = generateGaussianPath(curve.mean, curve.sigma, curve.amplitude, xMin, xMax, 250);
+                const sideHandleX = curve.mean + curve.sigma;
+                const sideHandleY = calculateGaussian(sideHandleX, curve.mean, curve.sigma, curve.amplitude);
+                const isActive = drag?.curveId === curve.id && drag.handleId === 'mean-amplitude';
+                const isHovered = hoveredPeakId === curve.id;
 
-              return (
-                <g key={curve.id}>
-                  <path
-                    d={`${path} L ${xMax} 0 L ${xMin} 0 Z`}
-                    fill={curve.color}
-                    fillOpacity={curveOpacity}
-                  />
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke={curve.color}
-                    strokeWidth={isExporting ? 0.04 / zoom : "3"}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
-                  />
-                  
-                  {!curve.isLocked && !isExporting && (
-                    <>
-                      {(isActive || isHovered) && (
-                        <g transform={`translate(${curve.mean}, ${curve.amplitude + (0.4 / zoom)}) scale(1, -1)`}>
-                          <text 
-                            fontSize={0.25 / zoom} 
-                            textAnchor="middle" 
-                            fill={theme === 'dark' ? 'white' : 'black'}
-                            className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
-                          >
-                            {curve.name}
-                          </text>
-                        </g>
-                      )}
+                return (
+                  <g key={curve.id}>
+                    <path
+                      d={`${path} L ${xMax} 0 L ${xMin} 0 Z`}
+                      fill={curve.color}
+                      fillOpacity={curveOpacity}
+                    />
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={curve.color}
+                      strokeWidth={isExporting ? 0.04 / zoom : "3"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
+                    />
+                    
+                    {!curve.isLocked && !isExporting && (
+                      <>
+                        {(isActive || isHovered) && (
+                          <g transform={`translate(${curve.mean}, ${curve.amplitude + (0.4 / zoom)}) scale(1, -1)`}>
+                            <text 
+                              fontSize={0.25 / zoom} 
+                              textAnchor="middle" 
+                              fill={theme === 'dark' ? 'white' : 'black'}
+                              className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
+                            >
+                              {curve.name}
+                            </text>
+                          </g>
+                        )}
 
-                      <Handle
-                        x={curve.mean}
-                        y={curve.amplitude}
-                        cursor="move"
-                        color={curve.color}
-                        isActive={isActive}
-                        size={handleSize / zoom}
-                        onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'mean-amplitude' }); }}
-                        onTouchStart={(e) => { 
-                          if (e.cancelable) e.preventDefault();
-                          e.stopPropagation(); 
-                          setDrag({ curveId: curve.id, type: 'mean-amplitude' }); 
-                        }}
-                        onMouseEnter={() => setHoveredPeakId(curve.id)}
-                        onMouseLeave={() => setHoveredPeakId(null)}
-                      />
-                      <Handle
-                        x={sideHandleX}
-                        y={sideHandleY}
-                        cursor="ew-resize"
-                        color={curve.color}
-                        isActive={drag?.curveId === curve.id && drag?.type === 'sigma'}
-                        size={handleSize / zoom}
-                        onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, type: 'sigma' }); }}
-                        onTouchStart={(e) => { 
-                          if (e.cancelable) e.preventDefault();
-                          e.stopPropagation(); 
-                          setDrag({ curveId: curve.id, type: 'sigma' }); 
-                        }}
-                      />
-                    </>
-                  )}
-                </g>
-              );
+                        <Handle
+                          x={curve.mean}
+                          y={curve.amplitude}
+                          cursor="move"
+                          color={curve.color}
+                          isActive={isActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'mean-amplitude' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'mean-amplitude' }); 
+                          }}
+                          onMouseEnter={() => setHoveredPeakId(curve.id)}
+                          onMouseLeave={() => setHoveredPeakId(null)}
+                        />
+                        <Handle
+                          x={sideHandleX}
+                          y={sideHandleY}
+                          cursor="ew-resize"
+                          color={curve.color}
+                          isActive={drag?.curveId === curve.id && drag.handleId === 'sigma'}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'sigma' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'sigma' }); 
+                          }}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              } else if (curve.type === 'linear') {
+                const path = generateLinearPath(curve.slope, curve.intercept, xMin, xMax);
+                const interceptHandleY = curve.intercept;
+                const slopeHandleY = calculateLinear(1, curve.slope, curve.intercept);
+                const isInterceptActive = drag?.curveId === curve.id && drag.handleId === 'intercept';
+                const isSlopeActive = drag?.curveId === curve.id && drag.handleId === 'slope';
+                const isHovered = hoveredPeakId === curve.id;
+
+                return (
+                  <g key={curve.id}>
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={curve.color}
+                      strokeWidth={isExporting ? 0.04 / zoom : "3"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
+                    />
+                    
+                    {!curve.isLocked && !isExporting && (
+                      <>
+                        {(isInterceptActive || isSlopeActive || isHovered) && (
+                          <g transform={`translate(0, ${curve.intercept + (0.4 / zoom)}) scale(1, -1)`}>
+                            <text 
+                              fontSize={0.25 / zoom} 
+                              textAnchor="middle" 
+                              fill={theme === 'dark' ? 'white' : 'black'}
+                              className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
+                            >
+                              {curve.name}
+                            </text>
+                          </g>
+                        )}
+
+                        <Handle
+                          x={0}
+                          y={interceptHandleY}
+                          cursor="ns-resize"
+                          color={curve.color}
+                          isActive={isInterceptActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'intercept' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'intercept' }); 
+                          }}
+                          onMouseEnter={() => setHoveredPeakId(curve.id)}
+                          onMouseLeave={() => setHoveredPeakId(null)}
+                        />
+                        <Handle
+                          x={1}
+                          y={slopeHandleY}
+                          cursor="ns-resize"
+                          color={curve.color}
+                          isActive={isSlopeActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'slope' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'slope' }); 
+                          }}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              } else if (curve.type === 'quadratic') {
+                const path = generateQuadraticPath(curve.a, curve.h, curve.k, xMin, xMax, 250);
+                const vertexHandleX = curve.h;
+                const vertexHandleY = curve.k;
+                const curvatureHandleX = curve.h + 1;
+                const curvatureHandleY = calculateQuadratic(curvatureHandleX, curve.a, curve.h, curve.k);
+                const isVertexActive = drag?.curveId === curve.id && drag.handleId === 'vertex';
+                const isCurvatureActive = drag?.curveId === curve.id && drag.handleId === 'curvature';
+                const isHovered = hoveredPeakId === curve.id;
+
+                return (
+                  <g key={curve.id}>
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={curve.color}
+                      strokeWidth={isExporting ? 0.04 / zoom : "3"}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={isExporting ? {} : { vectorEffect: 'non-scaling-stroke' }}
+                    />
+                    
+                    {!curve.isLocked && !isExporting && (
+                      <>
+                        {(isVertexActive || isCurvatureActive || isHovered) && (
+                          <g transform={`translate(${curve.h}, ${curve.k + (0.4 / zoom)}) scale(1, -1)`}>
+                            <text 
+                              fontSize={0.25 / zoom} 
+                              textAnchor="middle" 
+                              fill={theme === 'dark' ? 'white' : 'black'}
+                              className="font-light opacity-60 select-none pointer-events-none animate-in fade-in duration-200"
+                            >
+                              {curve.name}
+                            </text>
+                          </g>
+                        )}
+
+                        <Handle
+                          x={vertexHandleX}
+                          y={vertexHandleY}
+                          cursor="move"
+                          color={curve.color}
+                          isActive={isVertexActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'vertex' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'vertex' }); 
+                          }}
+                          onMouseEnter={() => setHoveredPeakId(curve.id)}
+                          onMouseLeave={() => setHoveredPeakId(null)}
+                        />
+                        <Handle
+                          x={curvatureHandleX}
+                          y={curvatureHandleY}
+                          cursor="ns-resize"
+                          color={curve.color}
+                          isActive={isCurvatureActive}
+                          size={handleSize / zoom}
+                          onMouseDown={(e) => { e.stopPropagation(); setDrag({ curveId: curve.id, handleId: 'curvature' }); }}
+                          onTouchStart={(e) => { 
+                            if (e.cancelable) e.preventDefault();
+                            e.stopPropagation(); 
+                            setDrag({ curveId: curve.id, handleId: 'curvature' }); 
+                          }}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              }
+              return null;
             })}
           </g>
         </svg>

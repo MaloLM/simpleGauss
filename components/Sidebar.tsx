@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { GaussianCurve, Theme, Language } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { AnyCurve, Theme, Language, CurveKind } from '../types';
 import { COLORS } from '../constants';
 import { translations } from '../translations';
 import { 
@@ -17,17 +17,59 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
-  curves: GaussianCurve[];
+  curves: AnyCurve[];
   theme: Theme;
   isOpen: boolean;
   onClose: () => void;
-  onAddCurve: () => void;
+  onAddCurve: (type: CurveKind) => void;
   onDeleteCurve: (id: string) => void;
-  onUpdateCurve: (id: string, updates: Partial<GaussianCurve>) => void;
+  onUpdateCurve: (id: string, updates: Partial<AnyCurve>) => void;
   onSettingsToggle: () => void;
   onExport: () => void;
   language: Language;
 }
+
+const NumericInput = ({ 
+  value, 
+  onChange, 
+  className,
+  min
+}: { 
+  value: number, 
+  onChange: (val: number) => void, 
+  className: string,
+  min?: number
+}) => {
+  const [localValue, setLocalValue] = useState(value.toString());
+
+  useEffect(() => {
+    // Only update local value if it's not currently being edited 
+    // or if the external value changed significantly
+    if (parseFloat(localValue) !== value) {
+      setLocalValue(value.toString());
+    }
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      value={localValue}
+      onChange={(e) => {
+        const s = e.target.value;
+        setLocalValue(s);
+        const val = parseFloat(s);
+        if (!isNaN(val)) {
+          onChange(min !== undefined ? Math.max(min, val) : val);
+        }
+      }}
+      onBlur={() => {
+        // On blur, reset to the actual value to clean up any invalid strings
+        setLocalValue(value.toString());
+      }}
+      className={className}
+    />
+  );
+};
 
 const Sidebar: React.FC<SidebarProps> = ({ 
   curves, 
@@ -44,6 +86,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   const t = translations[language];
   const isDark = theme === 'dark';
   const isLimitReached = curves.length >= 12;
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAddDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <aside 
@@ -100,19 +154,61 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {t.activeCount(curves.length)}
               </span>
             </div>
-            <button
-              onClick={onAddCurve}
-              disabled={isLimitReached}
-              className={`flex items-center gap-1 px-3 py-1.5 text-white text-[10px] font-black uppercase tracking-wider rounded-full transition-all shadow-lg active:scale-90 ${
-                isLimitReached 
-                  ? 'bg-slate-700 cursor-not-allowed opacity-50 shadow-none' 
-                  : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
-              }`}
-              title={isLimitReached ? t.limitReached : t.new}
-            >
-              <PlusIcon size={12} strokeWidth={4} />
-              <span>{t.new}</span>
-            </button>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+                disabled={isLimitReached}
+                className={`flex items-center gap-1 px-3 py-1.5 text-white text-[10px] font-black uppercase tracking-wider rounded-full transition-all shadow-lg active:scale-90 ${
+                  isLimitReached 
+                    ? 'bg-slate-700 cursor-not-allowed opacity-50 shadow-none' 
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                }`}
+                title={isLimitReached ? t.limitReached : t.new}
+              >
+                <PlusIcon size={12} strokeWidth={4} />
+                <span>{t.new}</span>
+              </button>
+
+              {isAddDropdownOpen && (
+                <div className={`absolute right-0 mt-2 w-40 rounded-xl shadow-2xl z-50 py-2 border animate-in fade-in slide-in-from-top-2 duration-200 ${
+                  isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <button
+                    onClick={() => {
+                      onAddCurve('gaussian');
+                      setIsAddDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {t.gaussian}
+                  </button>
+                    <button
+                      onClick={() => {
+                        onAddCurve('linear');
+                        setIsAddDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {t.linear}
+                    </button>
+                    <button
+                      onClick={() => {
+                        onAddCurve('quadratic');
+                        setIsAddDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {t.quadratic}
+                    </button>
+                  </div>
+                )}
+            </div>
           </div>
 
           {isLimitReached && (
@@ -151,46 +247,101 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="space-y-1">
-                    <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.mean} (μ)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={curve.mean.toFixed(2)}
-                      onChange={(e) => onUpdateCurve(curve.id, { mean: parseFloat(e.target.value) })}
-                      className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.stdDev} (σ)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.05"
-                      value={curve.sigma.toFixed(2)}
-                      onChange={(e) => onUpdateCurve(curve.id, { sigma: Math.max(0.05, parseFloat(e.target.value)) })}
-                      className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.peak} (Amp)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="0.01"
-                        max="5"
-                        step="0.05"
-                        value={curve.amplitude}
-                        onChange={(e) => onUpdateCurve(curve.id, { amplitude: parseFloat(e.target.value) })}
-                        className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                      />
-                      <span className="text-[10px] mono text-slate-500 font-bold min-w-[30px]">{curve.amplitude.toFixed(2)}</span>
+                {curve.type === 'gaussian' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.mean} (μ)</label>
+                        <NumericInput
+                          value={curve.mean}
+                          onChange={(val) => onUpdateCurve(curve.id, { mean: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.stdDev} (σ)</label>
+                        <NumericInput
+                          value={curve.sigma}
+                          min={0.05}
+                          onChange={(val) => onUpdateCurve(curve.id, { sigma: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="space-y-1 mb-4">
+                      <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.peak} (Amp)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0.01"
+                          max="5"
+                          step="0.05"
+                          value={curve.amplitude}
+                          onChange={(e) => onUpdateCurve(curve.id, { amplitude: parseFloat(e.target.value) })}
+                          className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <span className="text-[10px] mono text-slate-500 font-bold min-w-[30px]">{curve.amplitude.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {curve.type === 'linear' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.slope} (a)</label>
+                        <NumericInput
+                          value={curve.slope}
+                          onChange={(val) => onUpdateCurve(curve.id, { slope: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.intercept} (b)</label>
+                        <NumericInput
+                          value={curve.intercept}
+                          onChange={(val) => onUpdateCurve(curve.id, { intercept: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {curve.type === 'quadratic' && (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.curvature} (a)</label>
+                        <NumericInput
+                          value={curve.a}
+                          onChange={(val) => onUpdateCurve(curve.id, { a: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexX} (h)</label>
+                        <NumericInput
+                          value={curve.h}
+                          onChange={(val) => onUpdateCurve(curve.id, { h: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexY} (k)</label>
+                        <NumericInput
+                          value={curve.k}
+                          onChange={(val) => onUpdateCurve(curve.id, { k: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-end">
                   <div className="flex flex-wrap gap-1 max-w-[60px] justify-end">
                     {COLORS.slice(0, 6).map(color => (
                       <button
@@ -213,7 +364,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <div className={`text-center py-12 rounded-3xl border-2 border-dashed ${isDark ? 'border-slate-800 text-slate-600' : 'border-slate-100 text-slate-400'}`}>
                 <p className="text-sm italic mb-4">{t.noCurves}</p>
                 <button
-                  onClick={onAddCurve}
+                  onClick={() => onAddCurve('gaussian')}
                   className="text-xs font-black uppercase text-blue-500 hover:text-blue-400 underline underline-offset-4"
                 >
                   {t.createFirst}

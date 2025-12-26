@@ -1,16 +1,38 @@
 
 export type Language = 'en' | 'fr';
 
-export interface GaussianCurve {
+export type CurveKind = 'gaussian' | 'linear' | 'quadratic';
+
+export interface BaseCurve {
   id: string;
+  type: CurveKind;
   name: string;
-  mean: number;       // mu
-  sigma: number;      // standard deviation
-  amplitude: number;  // height (peak)
   color: string;
   isVisible: boolean;
   isLocked: boolean;
 }
+
+export interface GaussianCurve extends BaseCurve {
+  type: 'gaussian';
+  mean: number;       // mu
+  sigma: number;      // standard deviation
+  amplitude: number;  // height (peak)
+}
+
+export interface LinearCurve extends BaseCurve {
+  type: 'linear';
+  slope: number;      // a
+  intercept: number;  // b
+}
+
+export interface QuadraticCurve extends BaseCurve {
+  type: 'quadratic';
+  a: number;          // curvature
+  h: number;          // vertex x
+  k: number;          // vertex y
+}
+
+export type AnyCurve = GaussianCurve | LinearCurve | QuadraticCurve;
 
 export interface ViewBox {
   xMin: number;
@@ -23,7 +45,7 @@ export type Theme = 'light' | 'dark';
 
 export interface DragState {
   curveId: string;
-  type: 'mean-amplitude' | 'sigma';
+  handleId: string;
 }
 
 export interface ExportSettings {

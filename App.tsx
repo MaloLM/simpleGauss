@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
   GaussianCurve,
+  AnyCurve,
+  CurveKind,
   Theme,
   ViewBox,
   ExportSettings,
@@ -23,8 +25,8 @@ import {
 } from "lucide-react";
 
 const App: React.FC = () => {
-  const [curves, setCurves] = useState<GaussianCurve[]>(INITIAL_CURVES);
-  const [title, setTitle] = useState("Distribution Model");
+  const [curves, setCurves] = useState<AnyCurve[]>(INITIAL_CURVES);
+  const [title, setTitle] = useState("Your Model");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -61,22 +63,60 @@ const App: React.FC = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const addCurve = useCallback(() => {
+  const addCurve = useCallback((type: CurveKind) => {
     if (curves.length >= 15) return;
     const newId = Math.random().toString(36).substr(2, 9);
-    const newCurve: GaussianCurve = {
-      id: newId,
-      name:
-        appSettings.language === "en"
-          ? `Curve ${curves.length + 1}`
-          : `Courbe ${curves.length + 1}`,
-      mean: (Math.random() - 0.5) * 6 + panOffset.x,
-      sigma: 0.8 + Math.random() * 0.4,
-      amplitude: 0.6 + Math.random() * 0.4,
-      color: COLORS[curves.length % COLORS.length],
-      isVisible: true,
-      isLocked: false,
-    };
+    
+    let newCurve: AnyCurve;
+    
+    if (type === 'gaussian') {
+      newCurve = {
+        id: newId,
+        type: 'gaussian',
+        name:
+          appSettings.language === "en"
+            ? `Curve ${curves.length + 1}`
+            : `Courbe ${curves.length + 1}`,
+        mean: (Math.random() - 0.5) * 6 + panOffset.x,
+        sigma: 0.8 + Math.random() * 0.4,
+        amplitude: 0.6 + Math.random() * 0.4,
+        color: COLORS[curves.length % COLORS.length],
+        isVisible: true,
+        isLocked: false,
+      };
+    } else if (type === 'linear') {
+      newCurve = {
+        id: newId,
+        type: 'linear',
+        name:
+          appSettings.language === "en"
+            ? `Curve ${curves.length + 1}`
+            : `Courbe ${curves.length + 1}`,
+        slope: 0.5,
+        intercept: 1,
+        color: COLORS[curves.length % COLORS.length],
+        isVisible: true,
+        isLocked: false,
+      };
+    } else if (type === 'quadratic') {
+      newCurve = {
+        id: newId,
+        type: 'quadratic',
+        name:
+          appSettings.language === "en"
+            ? `Curve ${curves.length + 1}`
+            : `Courbe ${curves.length + 1}`,
+        a: 0.5,
+        h: panOffset.x,
+        k: 1 + panOffset.y,
+        color: COLORS[curves.length % COLORS.length],
+        isVisible: true,
+        isLocked: false,
+      };
+    } else {
+      return;
+    }
+
     setCurves((prev) => [...prev, newCurve]);
   }, [curves.length, panOffset.x, appSettings.language]);
 
@@ -85,9 +125,9 @@ const App: React.FC = () => {
   }, []);
 
   const updateCurve = useCallback(
-    (id: string, updates: Partial<GaussianCurve>) => {
+    (id: string, updates: Partial<AnyCurve>) => {
       setCurves((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+        prev.map((c) => (c.id === id ? { ...c, ...updates } as AnyCurve : c))
       );
     },
     []
@@ -258,11 +298,25 @@ const App: React.FC = () => {
 
               ctx.fillStyle = primaryTextColor;
               ctx.font = `bold ${12 * scale}px JetBrains Mono, monospace`;
-              ctx.fillText(
-                `μ:${curve.mean.toFixed(1)} σ:${curve.sigma.toFixed(1)}`,
-                legendX + 24 * scale,
-                legendY - 8 * scale
-              );
+              if (curve.type === 'gaussian') {
+                ctx.fillText(
+                  `μ:${curve.mean.toFixed(1)} σ:${curve.sigma.toFixed(1)}`,
+                  legendX + 24 * scale,
+                  legendY - 8 * scale
+                );
+              } else if (curve.type === 'linear') {
+                ctx.fillText(
+                  `a:${curve.slope.toFixed(1)} b:${curve.intercept.toFixed(1)}`,
+                  legendX + 24 * scale,
+                  legendY - 8 * scale
+                );
+              } else if (curve.type === 'quadratic') {
+                ctx.fillText(
+                  `a:${curve.a.toFixed(1)} h:${curve.h.toFixed(1)} k:${curve.k.toFixed(1)}`,
+                  legendX + 24 * scale,
+                  legendY - 8 * scale
+                );
+              }
 
               legendY -= itemHeight + 8 * scale;
             });
@@ -524,9 +578,21 @@ const App: React.FC = () => {
                     <span className="text-[9px] font-black uppercase tracking-tighter opacity-40 leading-none mb-1 truncate">
                       {c.name}
                     </span>
-                    <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
-                      μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}
-                    </span>
+                    {c.type === 'gaussian' && (
+                      <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                        μ:{c.mean.toFixed(1)} σ:{c.sigma.toFixed(1)}
+                      </span>
+                    )}
+                    {c.type === 'linear' && (
+                      <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                        a:{c.slope.toFixed(1)} b:{c.intercept.toFixed(1)}
+                      </span>
+                    )}
+                    {c.type === 'quadratic' && (
+                      <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                        a:{c.a.toFixed(1)} h:{c.h.toFixed(1)} k:{c.k.toFixed(1)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

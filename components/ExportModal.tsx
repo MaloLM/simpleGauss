@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GaussianCurve, Theme, ExportSettings, Language } from '../types';
+import { AnyCurve, Theme, ExportSettings, Language } from '../types';
 import { translations } from '../translations';
 import { XIcon, CheckCircle2Icon, CircleIcon, PaletteIcon } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
@@ -9,7 +9,7 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (settings: ExportSettings) => void;
-  curves: GaussianCurve[];
+  curves: AnyCurve[];
   theme: Theme;
   currentTitle: string;
   initialSettings: ExportSettings | null;
