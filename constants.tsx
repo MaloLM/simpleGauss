@@ -2,8 +2,8 @@
 export const DEFAULT_VIEW_BOX = {
   xMin: -7,
   xMax: 7,
-  yMin: 0,
-  yMax: 5,
+  yMin: -2.5,
+  yMax: 2.5,
 };
 
 export const COLORS = [
@@ -23,7 +23,7 @@ export const INITIAL_CURVES = [
     name: 'Standard Normal',
     mean: 0,
     sigma: 1,
-    amplitude: 5,
+    amplitude: 3,
     color: '#3b82f6',
     isVisible: true,
     isLocked: false,

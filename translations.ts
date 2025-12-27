@@ -52,6 +52,7 @@ export const translations = {
     linear: "Linear",
     quadratic: "Quadratic",
     powerLaw: "Power Law",
+    exponential: "Exponential",
     slope: "Slope",
     intercept: "Intercept",
     curvature: "Curvature",
@@ -59,6 +60,7 @@ export const translations = {
     vertexY: "Vertex Y",
     coefficient: "Coefficient",
     exponent: "Exponent",
+    base: "Base",
     mobilePrevention: "This application is designed for desktop use. Please use a larger screen to access the model."
   },
 
@@ -113,6 +115,7 @@ export const translations = {
     linear: "Linéaire",
     quadratic: "Quadratique",
     powerLaw: "Loi de puissance",
+    exponential: "Exponentielle",
     slope: "Pente",
     intercept: "Ordonnée à l'origine",
     curvature: "Courbure",
@@ -120,6 +123,7 @@ export const translations = {
     vertexY: "Sommet Y",
     coefficient: "Coefficient",
     exponent: "Exposant",
+    base: "Base",
     mobilePrevention: "Cette application est conçue pour une utilisation sur ordinateur. Veuillez utiliser un écran plus large pour accéder au moteur de distribution."
   }
 };

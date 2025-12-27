@@ -5,7 +5,7 @@ interface HandleProps {
   x: number;
   y: number;
   cursor: string;
-  onMouseDown: (e: React.MouseEvent) => void;
+  onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -23,11 +23,11 @@ const Handle: React.FC<HandleProps> = ({
   onMouseEnter,
   onMouseLeave,
   color, 
-  size = 0.1 
+  size = 0.1
 }) => {
   return (
     <g 
-      className="group cursor-pointer select-none handle-group" 
+      className="group select-none handle-group cursor-pointer"
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       onMouseEnter={onMouseEnter}
@@ -36,7 +36,7 @@ const Handle: React.FC<HandleProps> = ({
     >
 
       {/* Hit area - larger than visible handle for accessibility */}
-      <circle cx={x} cy={y} r={size * 2.5} fill="transparent" />
+      <circle cx={x} cy={y} r={size * 1.5} fill="transparent" />
       
       {/* Main Handle Circle */}
       <circle 

@@ -1,5 +1,5 @@
 import React from "react";
-import { AppSettings, Theme } from "../types";
+import { AppSettings } from "../types";
 import { translations } from "../translations";
 import {
   XIcon,
@@ -131,69 +131,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </section>
 
-          {/* Handle Size Slider */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500">
-                  <MousePointer2Icon size={16} />
-                </div>
-                <label className="text-xs font-black uppercase tracking-widest opacity-60">
-                  {t.interactionNodes}
-                </label>
-              </div>
-              <span className="text-[10px] font-black px-2 py-1 bg-blue-500/10 text-blue-500 rounded-md">
-                {(settings.handleSize * 100).toFixed(0)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0.05"
-              max="0.25"
-              step="0.01"
-              value={settings.handleSize}
-              onChange={(e) =>
-                onUpdateSettings({ handleSize: parseFloat(e.target.value) })
-              }
-              className="w-full h-1.5 bg-slate-700/30 rounded-lg appearance-none cursor-pointer accent-blue-500"
-            />
-            <div className="flex justify-between text-[8px] font-bold opacity-30 uppercase tracking-widest">
-              <span>{t.precise}</span>
-              <span>{t.large}</span>
-            </div>
-          </section>
-
-          {/* Curve Opacity Slider */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500">
-                  <LayersIcon size={16} />
-                </div>
-                <label className="text-xs font-black uppercase tracking-widest opacity-60">
-                  {t.visualDensity}
-                </label>
-              </div>
-              <span className="text-[10px] font-black px-2 py-1 bg-blue-500/10 text-blue-500 rounded-md">
-                {(settings.curveOpacity * 100).toFixed(0)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0.02"
-              max="0.6"
-              step="0.01"
-              value={settings.curveOpacity}
-              onChange={(e) =>
-                onUpdateSettings({ curveOpacity: parseFloat(e.target.value) })
-              }
-              className="w-full h-1.5 bg-slate-700/30 rounded-lg appearance-none cursor-pointer accent-blue-500"
-            />
-            <div className="flex justify-between text-[8px] font-bold opacity-30 uppercase tracking-widest">
-              <span>{t.transparent}</span>
-              <span>{t.solid}</span>
-            </div>
-          </section>
         </div>
       </div>
     </div>

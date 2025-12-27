@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnyCurve, Theme, Language, CurveKind } from '../types';
-import { COLORS } from '../constants';
 import { translations } from '../translations';
 import { 
-  PlusIcon, 
   Trash2Icon, 
   EyeIcon, 
   EyeOffIcon, 
@@ -14,7 +12,8 @@ import {
   PanelLeftCloseIcon,
   InfoIcon,
   ChevronDownIcon,
-  GripVerticalIcon
+  GripVerticalIcon,
+  GithubIcon
 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 
@@ -93,6 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [canDrag, setCanDrag] = useState<boolean>(false);
   const [activeColorPickerId, setActiveColorPickerId] = useState<string | null>(null);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -183,7 +183,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }`}
                 title={isLimitReached ? t.limitReached : t.new}
               >
-                <PlusIcon size={12} strokeWidth={4} />
                 <span>{t.new}</span>
                 <ChevronDownIcon size={12} className={`transition-transform duration-200 ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -236,6 +235,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     {t.powerLaw}
                   </button>
+                  <button
+                    onClick={() => {
+                      onAddCurve('exponential');
+                      setIsAddDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {t.exponential}
+                  </button>
                 </div>
               )}
             </div>
@@ -252,8 +262,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             {curves.map((curve, index) => (
               <div 
                 key={curve.id} 
-                draggable
+                draggable={canDrag}
                 onDragStart={(e) => {
+                  if (!canDrag) {
+                    e.preventDefault();
+                    return;
+                  }
                   setDraggedIndex(index);
                   e.dataTransfer.effectAllowed = 'move';
                 }}
@@ -275,6 +289,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onDragEnd={() => {
                   setDraggedIndex(null);
                   setDragOverIndex(null);
+                  setCanDrag(false);
                 }}
                 className={`group p-4 rounded-2xl border transition-all relative ${
                   draggedIndex === index ? 'opacity-20' : 'opacity-100'
@@ -290,15 +305,62 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className={`cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-40 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <div 
+                      className={`cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-40 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
+                      onMouseEnter={() => setCanDrag(true)}
+                      onMouseLeave={() => setCanDrag(false)}
+                    >
                       <GripVerticalIcon size={14} />
                     </div>
-                    <input
-                      type="text"
-                      value={curve.name}
-                      onChange={(e) => onUpdateCurve(curve.id, { name: e.target.value })}
-                      className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0 outline-none"
-                    />
+                    
+                    <div className="relative flex items-center gap-2 flex-1 min-w-0" ref={activeColorPickerId === curve.id ? colorPickerRef : null}>
+                      <button
+                        onClick={() => setActiveColorPickerId(activeColorPickerId === curve.id ? null : curve.id)}
+                        className={`w-3 h-3 rounded-full shrink-0 shadow-sm border transition-all hover:scale-110 active:scale-95 ${
+                          isDark ? 'border-white/20' : 'border-slate-300'
+                        }`}
+                        style={{ backgroundColor: curve.color }}
+                        title="Change Color"
+                      />
+                      <input
+                        type="text"
+                        value={curve.name}
+                        onChange={(e) => onUpdateCurve(curve.id, { name: e.target.value })}
+                        className="bg-transparent border-none focus:ring-0 font-bold text-sm w-full p-0 outline-none"
+                      />
+
+                      {activeColorPickerId === curve.id && (
+                        <div className={`absolute z-[60] top-full left-0 mt-2 p-4 rounded-3xl shadow-2xl border animate-in fade-in slide-in-from-top-2 duration-200 ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                          <HexColorPicker 
+                            color={curve.color} 
+                            onChange={(color) => onUpdateCurve(curve.id, { color })} 
+                          />
+                          <div className="mt-4 flex gap-2">
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors bg-white/5 border-white/10">
+                              <span className="text-[10px] opacity-40 font-black">#</span>
+                              <input 
+                                type="text"
+                                value={curve.color.replace('#', '')}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (/^[0-9A-F]{0,6}$/i.test(val)) {
+                                    onUpdateCurve(curve.id, { color: `#${val}` });
+                                  }
+                                }}
+                                className="w-full bg-transparent text-xs font-bold mono uppercase outline-none focus:text-blue-500 transition-colors"
+                                placeholder="FFFFFF"
+                              />
+                            </div>
+                            <button 
+                              onClick={() => setActiveColorPickerId(null)}
+                              className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors text-white"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
                     <button 
@@ -454,48 +516,47 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </>
                 )}
 
-                <div className="flex justify-end relative" ref={activeColorPickerId === curve.id ? colorPickerRef : null}>
-                  {activeColorPickerId === curve.id && (
-                    <div className={`absolute z-[60] bottom-full right-0 mb-4 p-4 rounded-3xl shadow-2xl border animate-in fade-in slide-in-from-bottom-2 duration-200 ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
-                      <HexColorPicker 
-                        color={curve.color} 
-                        onChange={(color) => onUpdateCurve(curve.id, { color })} 
-                      />
-                      <div className="mt-4 flex gap-2">
-                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors bg-white/5 border-white/10">
-                          <span className="text-[10px] opacity-40 font-black">#</span>
-                          <input 
-                            type="text"
-                            value={curve.color.replace('#', '')}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (/^[0-9A-F]{0,6}$/i.test(val)) {
-                                onUpdateCurve(curve.id, { color: `#${val}` });
-                              }
-                            }}
-                            className="w-full bg-transparent text-xs font-bold mono uppercase outline-none focus:text-blue-500 transition-colors"
-                            placeholder="FFFFFF"
-                          />
-                        </div>
-                        <button 
-                          onClick={() => setActiveColorPickerId(null)}
-                          className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors text-white"
-                        >
-                          OK
-                        </button>
+                {curve.type === 'exponential' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.coefficient} (a)</label>
+                        <NumericInput
+                          value={curve.a}
+                          onChange={(val) => onUpdateCurve(curve.id, { a: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.base} (b)</label>
+                        <NumericInput
+                          value={curve.base}
+                          min={0.001}
+                          onChange={(val) => onUpdateCurve(curve.id, { base: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
                       </div>
                     </div>
-                  )}
-                  
-                  <button
-                    onClick={() => setActiveColorPickerId(activeColorPickerId === curve.id ? null : curve.id)}
-                    className={`w-12 h-6 rounded-lg shadow-inner border transition-all hover:scale-105 active:scale-95 ${
-                      isDark ? 'border-white/10' : 'border-slate-200'
-                    } ${activeColorPickerId === curve.id ? 'ring-2 ring-blue-500 ring-offset-2 ' + (isDark ? 'ring-offset-slate-900' : 'ring-offset-white') : ''}`}
-                    style={{ backgroundColor: curve.color }}
-                    title="Change Color"
-                  />
-                </div>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexX} (h)</label>
+                        <NumericInput
+                          value={curve.h}
+                          onChange={(val) => onUpdateCurve(curve.id, { h: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">{t.vertexY} (k)</label>
+                        <NumericInput
+                          value={curve.k}
+                          onChange={(val) => onUpdateCurve(curve.id, { k: val })}
+                          className={`w-full px-2 py-1 rounded-lg border text-xs mono font-bold outline-none focus:border-blue-500/50 transition-colors ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             
@@ -514,9 +575,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className={`mt-8 pt-8 border-t min-w-0 ${isDark ? 'border-slate-800/50' : 'border-slate-100'}`}>
-          <p className="text-[10px] text-slate-500 text-center px-4 leading-relaxed font-medium">
-            <span className="text-blue-500 font-bold">{t.proTip.split(':')[0]}:</span> {t.proTip.split(':')[1]}
-          </p>
+          <div className="flex justify-center pb-4">
+            <a 
+              href="https://github.com/MaloLM/simpleGauss" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95 ${
+                isDark 
+                  ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}
+            >
+              <GithubIcon size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">GitHub</span>
+            </a>
+          </div>
         </div>
       </div>
 

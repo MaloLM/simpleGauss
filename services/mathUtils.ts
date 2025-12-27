@@ -68,6 +68,39 @@ export const generatePowerLawPath = (
 };
 
 /**
+ * Calculates the y-value of an exponential curve at point x.
+ * f(x) = a * base^(x - h) + k
+ */
+export const calculateExponential = (x: number, a: number, base: number, h: number, k: number): number => {
+  return a * Math.pow(Math.max(0.001, base), x - h) + k;
+};
+
+/**
+ * Generates a path string for an SVG polyline/path representing the exponential curve.
+ */
+export const generateExponentialPath = (
+  a: number,
+  base: number,
+  h: number,
+  k: number,
+  xMin: number,
+  xMax: number,
+  resolution: number = 200
+): string => {
+  const points: [number, number][] = [];
+  const step = (xMax - xMin) / resolution;
+  
+  for (let x = xMin; x <= xMax; x += step) {
+    const y = calculateExponential(x, a, base, h, k);
+    // Clamp y to avoid SVG rendering issues with extreme values
+    const clampedY = Math.max(-100, Math.min(100, y));
+    points.push([x, clampedY]);
+  }
+  
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+};
+
+/**
  * Calculates the y-value of a linear curve at point x.
  * f(x) = a * x + b
  */

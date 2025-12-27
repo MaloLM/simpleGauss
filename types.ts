@@ -1,7 +1,7 @@
 
 export type Language = 'en' | 'fr';
 
-export type CurveKind = 'gaussian' | 'linear' | 'quadratic' | 'powerLaw';
+export type CurveKind = 'gaussian' | 'linear' | 'quadratic' | 'powerLaw' | 'exponential';
 
 export interface BaseCurve {
   id: string;
@@ -40,7 +40,15 @@ export interface PowerLawCurve extends BaseCurve {
   k: number;          // vertex y
 }
 
-export type AnyCurve = GaussianCurve | LinearCurve | QuadraticCurve | PowerLawCurve;
+export interface ExponentialCurve extends BaseCurve {
+  type: 'exponential';
+  a: number;          // coefficient
+  base: number;       // base (b)
+  h: number;          // horizontal shift
+  k: number;          // vertical shift
+}
+
+export type AnyCurve = GaussianCurve | LinearCurve | QuadraticCurve | PowerLawCurve | ExponentialCurve;
 
 export interface ViewBox {
   xMin: number;

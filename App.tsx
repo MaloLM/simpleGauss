@@ -1,10 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
-  GaussianCurve,
   AnyCurve,
   CurveKind,
-  Theme,
-  ViewBox,
   ExportSettings,
   AppSettings,
 } from "./types";
@@ -13,15 +10,16 @@ import ConstructionCanvas from "./components/ConstructionCanvas";
 import Sidebar from "./components/Sidebar";
 import ExportModal from "./components/ExportModal";
 import SettingsModal from "./components/SettingsModal";
+import CanvasSettingsModal from "./components/CanvasSettingsModal";
 import MobilePrevention from "./components/MobilePrevention";
 import { translations } from "./translations";
 import {
   PanelLeftOpenIcon,
   PanelLeftCloseIcon,
-  RefreshCcwIcon,
   PlusIcon,
   MinusIcon,
   CameraIcon,
+  Settings2Icon,
 } from "lucide-react";
 
 const App: React.FC = () => {
@@ -30,6 +28,7 @@ const App: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isCanvasSettingsOpen, setIsCanvasSettingsOpen] = useState(false);
   const [activeExportSettings, setActiveExportSettings] =
     useState<ExportSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -69,20 +68,18 @@ const App: React.FC = () => {
     
     let newCurve: AnyCurve;
     
-    const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const colorIndex = curves.length % COLORS.length;
+    const nextColor = COLORS[colorIndex];
 
     if (type === 'gaussian') {
       newCurve = {
         id: newId,
         type: 'gaussian',
-        name:
-          appSettings.language === "en"
-            ? `Curve ${curves.length + 1}`
-            : `Courbe ${curves.length + 1}`,
+        name: `${t.gaussian} ${curves.length + 1}`,
         mean: (Math.random() - 0.5) * 6 + panOffset.x,
         sigma: 0.8 + Math.random() * 0.4,
         amplitude: 0.6 + Math.random() * 0.4,
-        color: randomColor,
+        color: nextColor,
         isVisible: true,
         isLocked: false,
       };
@@ -90,13 +87,10 @@ const App: React.FC = () => {
       newCurve = {
         id: newId,
         type: 'linear',
-        name:
-          appSettings.language === "en"
-            ? `Curve ${curves.length + 1}`
-            : `Courbe ${curves.length + 1}`,
+        name: `${t.linear} ${curves.length + 1}`,
         slope: 0.5,
         intercept: 1,
-        color: randomColor,
+        color: nextColor,
         isVisible: true,
         isLocked: false,
       };
@@ -104,14 +98,11 @@ const App: React.FC = () => {
       newCurve = {
         id: newId,
         type: 'quadratic',
-        name:
-          appSettings.language === "en"
-            ? `Curve ${curves.length + 1}`
-            : `Courbe ${curves.length + 1}`,
+        name: `${t.quadratic} ${curves.length + 1}`,
         a: 0.5,
         h: panOffset.x,
         k: 1 + panOffset.y,
-        color: randomColor,
+        color: nextColor,
         isVisible: true,
         isLocked: false,
       };
@@ -119,15 +110,25 @@ const App: React.FC = () => {
       newCurve = {
         id: newId,
         type: 'powerLaw',
-        name:
-          appSettings.language === "en"
-            ? `Curve ${curves.length + 1}`
-            : `Courbe ${curves.length + 1}`,
+        name: `${t.powerLaw} ${curves.length + 1}`,
         a: 1,
         b: -1,
         h: panOffset.x,
         k: panOffset.y,
-        color: randomColor,
+        color: nextColor,
+        isVisible: true,
+        isLocked: false,
+      };
+    } else if (type === 'exponential') {
+      newCurve = {
+        id: newId,
+        type: 'exponential',
+        name: `${t.exponential} ${curves.length + 1}`,
+        a: 1,
+        base: 2,
+        h: panOffset.x,
+        k: panOffset.y,
+        color: nextColor,
         isVisible: true,
         isLocked: false,
       };
@@ -353,6 +354,12 @@ const App: React.FC = () => {
                   legendX + 24 * scale,
                   legendY - 8 * scale
                 );
+              } else if (curve.type === 'exponential') {
+                ctx.fillText(
+                  `a:${curve.a.toFixed(1)} b:${curve.base.toFixed(1)} h:${curve.h.toFixed(1)} k:${curve.k.toFixed(1)}`,
+                  legendX + 24 * scale,
+                  legendY - 8 * scale
+                );
               }
 
               legendY -= itemHeight + 8 * scale;
@@ -436,7 +443,7 @@ const App: React.FC = () => {
               }`}
               title={t.reset}
             >
-              <RefreshCcwIcon size={18} />
+              <PlusIcon size={18} />
               <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">
                 {t.reset}
               </span>
@@ -453,6 +460,19 @@ const App: React.FC = () => {
               title={t.screenshot}
             >
               <CameraIcon size={18} />
+            </button>
+
+            {/* Canvas Settings Button */}
+            <button
+              onClick={() => setIsCanvasSettingsOpen(true)}
+              className={`p-3 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2 ${
+                theme === "dark"
+                  ? "bg-slate-800 text-white border border-white/10"
+                  : "bg-white text-slate-900 border border-slate-200"
+              }`}
+              title={t.settingsIcon}
+            >
+              <Settings2Icon size={18} />
             </button>
 
             {/* Zoom Buttons Group (NEW) */}
@@ -523,83 +543,9 @@ const App: React.FC = () => {
           showAxes={isExporting ? !!activeExportSettings?.showAxes : showAxes}
         />
 
-        {/* Labels Control Overlay */}
-        {!isExporting && (
-          <div className="absolute bottom-12 left-4 md:bottom-16 md:left-10 flex flex-wrap gap-x-6 gap-y-2 z-20">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={showGrid}
-                onChange={() => setShowGrid(!showGrid)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-              />
-              <span
-                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
-                  theme === "dark"
-                    ? "text-white/60 group-hover:text-white"
-                    : "text-slate-900/60 group-hover:text-slate-900"
-                }`}
-              >
-                {t.showGrid}
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={showAxes}
-                onChange={() => setShowAxes(!showAxes)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-              />
-              <span
-                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
-                  theme === "dark"
-                    ? "text-white/60 group-hover:text-white"
-                    : "text-slate-900/60 group-hover:text-slate-900"
-                }`}
-              >
-                {t.showAxes}
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={showXValues}
-                onChange={() => setShowXValues(!showXValues)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-              />
-              <span
-                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
-                  theme === "dark"
-                    ? "text-white/60 group-hover:text-white"
-                    : "text-slate-900/60 group-hover:text-slate-900"
-                }`}
-              >
-                {t.showXValues}
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={showYValues}
-                onChange={() => setShowYValues(!showYValues)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-              />
-              <span
-                className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${
-                  theme === "dark"
-                    ? "text-white/60 group-hover:text-white"
-                    : "text-slate-900/60 group-hover:text-slate-900"
-                }`}
-              >
-                {t.showYValues}
-              </span>
-            </label>
-          </div>
-        )}
-
         {/* Legend Overlay */}
         {!isExporting && (
-          <div className="absolute bottom-24 md:bottom-28 left-8 md:left-14 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
+          <div className="absolute bottom-8 md:bottom-10 left-8 md:left-10 grid grid-cols-2 gap-3 pointer-events-none max-w-[calc(100%-2rem)] z-10">
             {curves
               .filter((c) => c.isVisible)
               .map((c) => (
@@ -633,6 +579,11 @@ const App: React.FC = () => {
                     {c.type === 'powerLaw' && (
                       <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
                         a:{c.a.toFixed(1)} b:{c.b.toFixed(1)} h:{c.h.toFixed(1)} k:{c.k.toFixed(1)}
+                      </span>
+                    )}
+                    {c.type === 'exponential' && (
+                      <span className="text-[10px] mono font-bold opacity-80 leading-none truncate">
+                        a:{c.a.toFixed(1)} b:{c.base.toFixed(1)} h:{c.h.toFixed(1)} k:{c.k.toFixed(1)}
                       </span>
                     )}
                   </div>
@@ -673,6 +624,25 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsModalOpen(false)}
         settings={appSettings}
         onUpdateSettings={updateAppSettings}
+      />
+
+      <CanvasSettingsModal
+        isOpen={isCanvasSettingsOpen}
+        onClose={() => setIsCanvasSettingsOpen(false)}
+        theme={theme}
+        language={appSettings.language}
+        showGrid={showGrid}
+        setShowGrid={setShowGrid}
+        showAxes={showAxes}
+        setShowAxes={setShowAxes}
+        showXValues={showXValues}
+        setShowXValues={setShowXValues}
+        showYValues={showYValues}
+        setShowYValues={setShowYValues}
+        handleSize={appSettings.handleSize}
+        setHandleSize={(val) => updateAppSettings({ handleSize: val })}
+        curveOpacity={appSettings.curveOpacity}
+        setCurveOpacity={(val) => updateAppSettings({ curveOpacity: val })}
       />
     </div>
   );
